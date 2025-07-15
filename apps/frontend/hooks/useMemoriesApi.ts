@@ -122,10 +122,15 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
         const selectedMemo = {
           id: memo.id.toString(),
           memory: memo.content,
-          metadata: { summary: memo.summary, importance: memo.importance },
+          metadata: {
+            summary: memo.summary,
+            importance: memo.importance,
+            authorRole: memo.authorRole,
+            sessionId: memo.sessionId,
+            userId: memo.userId,
+          },
           tags: memo.tags || [],
           created_at: memo.createdAt.getTime(),
-          app_name: memo.sessionId, // Using sessionId as app_name for now
           state: "active" as const,
         };
 

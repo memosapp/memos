@@ -33,7 +33,7 @@ import {
   selectAllMemories,
   clearSelection,
 } from "@/store/memoriesSlice";
-import SourceApp from "@/components/shared/source-app";
+
 import { HiMiniRectangleStack } from "react-icons/hi2";
 import { PiSwatches } from "react-icons/pi";
 import { GoPackage } from "react-icons/go";
@@ -133,7 +133,7 @@ export function MemoryTable() {
             <TableHead className="w-[140px] border-zinc-700">
               <div className="flex items-center">
                 <GoPackage className="mr-1" />
-                Source App
+                Created By
               </div>
             </TableHead>
             <TableHead className="w-[140px] border-zinc-700">
@@ -217,7 +217,9 @@ export function MemoryTable() {
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
-                <SourceApp source={memory.app_name} />
+                <div className="text-xs text-zinc-500 capitalize">
+                  {memory.metadata?.authorRole || "user"}
+                </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
                 {formatDate(memory.created_at)}

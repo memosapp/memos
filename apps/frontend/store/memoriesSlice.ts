@@ -8,7 +8,6 @@ export interface SimpleMemory {
   metadata: any;
   tags: string[];
   created_at: number;
-  app_name: string;
   state: "active" | "paused" | "archived" | "deleted";
 }
 
@@ -81,7 +80,6 @@ const memoriesSlice = createSlice({
           },
           tags: memo.tags || [],
           created_at: new Date(memo.createdAt).getTime(),
-          app_name: "api",
           state: "active" as const,
         }));
       } else {

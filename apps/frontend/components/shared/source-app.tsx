@@ -64,6 +64,7 @@ export const constants = {
 };
 
 const SourceApp = ({ source }: { source: string }) => {
+  console.log("source", source);
   if (!constants[source as keyof typeof constants]) {
     return (
       <div>

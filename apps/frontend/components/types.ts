@@ -52,6 +52,5 @@ export interface Memory {
   metadata: any;
   tags: string[]; // Tags for organizing memories
   created_at: number;
-  app_name: string;
   state: "active" | "paused" | "archived" | "deleted";
 }
