@@ -1,12 +1,12 @@
 # /// script
-# dependencies = ["pydantic-ai-slim[openai]", "asyncpg", "numpy", "pgvector"]
+# dependencies = ["pydantic-ai-slim[openai]", "asyncpg", "numpy", "pgvector", "google-genai"]
 # ///
 
-# uv pip install 'pydantic-ai-slim[openai]' asyncpg numpy pgvector
+# uv pip install 'pydantic-ai-slim[openai]' asyncpg numpy pgvector google-genai
 
 """
 Recursive memory system inspired by the human brain's clustering of memories.
-Uses OpenAI's 'text-embedding-3-small' model and pgvector for efficient
+Uses Google Gemini's 'gemini-embedding-001' model and pgvector for efficient
 similarity search.
 """
 
@@ -20,7 +20,7 @@ from typing import Annotated, Self, TypeVar
 
 import asyncpg
 import numpy as np
-from openai import AsyncOpenAI
+from google import genai
 from pgvector.asyncpg import register_vector  # Import register_vector
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
@@ -33,7 +33,7 @@ DECAY_FACTOR = 0.99
 REINFORCEMENT_FACTOR = 1.1
 
 DEFAULT_LLM_MODEL = "openai:gpt-4o"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001"
 
 T = TypeVar("T")
 
@@ -44,6 +44,7 @@ mcp = FastMCP(
         "asyncpg",
         "numpy",
         "pgvector",
+        "google-genai",
     ],
 )
 
@@ -76,8 +77,16 @@ async def do_ai(
 
 @dataclass
 class Deps:
-    openai: AsyncOpenAI
+    genai_client: genai.AsyncClient
     pool: asyncpg.Pool
+
+
+def get_genai_client() -> genai.AsyncClient:
+    """Initialize the Google GenAI async client with API key from environment variable."""
+    api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY environment variable is required")
+    return genai.Client(api_key=api_key).aio
 
 
 async def get_db_pool() -> asyncpg.Pool:
@@ -159,11 +168,11 @@ class MemoryNode(BaseModel):
 
 
 async def get_embedding(text: str, deps: Deps) -> list[float]:
-    embedding_response = await deps.openai.embeddings.create(
-        input=text,
+    result = await deps.genai_client.models.embed_content(
         model=DEFAULT_EMBEDDING_MODEL,
+        contents=text
     )
-    return embedding_response.data[0].embedding
+    return result.embeddings[0].values
 
 
 async def delete_memory(memory_id: int, deps: Deps):
@@ -275,7 +284,7 @@ async def display_memory_tree(deps: Deps) -> str:
 async def remember(
     contents: list[str] = Field(description="List of observations or memories to store"),
 ):
-    deps = Deps(openai=AsyncOpenAI(), pool=await get_db_pool())
+    deps = Deps(genai_client=get_genai_client(), pool=await get_db_pool())
     try:
         return "\n".join(await asyncio.gather(*[add_memory(content, deps) for content in contents]))
     finally:
@@ -284,7 +293,7 @@ async def remember(
 
 @mcp.tool()
 async def read_profile() -> str:
-    deps = Deps(openai=AsyncOpenAI(), pool=await get_db_pool())
+    deps = Deps(genai_client=get_genai_client(), pool=await get_db_pool())
     profile = await display_memory_tree(deps)
     await deps.pool.close()
     return profile
@@ -320,7 +329,7 @@ async def initialize_database():
                     importance REAL NOT NULL,
                     access_count INT NOT NULL,
                     timestamp DOUBLE PRECISION NOT NULL,
-                    embedding vector(1536) NOT NULL
+                    embedding vector(768) NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_memories_embedding ON memories
                     USING hnsw (embedding vector_l2_ops);
