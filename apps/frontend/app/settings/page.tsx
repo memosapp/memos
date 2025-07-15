@@ -1,165 +1,82 @@
 "use client";
 
-import { useState, useEffect } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { SaveIcon, RotateCcw } from "lucide-react"
-import { FormView } from "@/components/form-view"
-import { JsonEditor } from "@/components/json-editor"
-import { useConfig } from "@/hooks/useConfig"
-import { useSelector } from "react-redux"
-import { RootState } from "@/store/store"
-import { useToast } from "@/components/ui/use-toast"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
 export default function SettingsPage() {
-  const { toast } = useToast()
-  const configState = useSelector((state: RootState) => state.config)
-  const [settings, setSettings] = useState({
-    openmemory: configState.openmemory || {
-      custom_instructions: null
-    },
-    mem0: configState.mem0
-  })
-  const [viewMode, setViewMode] = useState<"form" | "json">("form")
-  const { fetchConfig, saveConfig, resetConfig, isLoading, error } = useConfig()
-
-  useEffect(() => {
-    // Load config from API on component mount
-    const loadConfig = async () => {
-      try {
-        await fetchConfig()
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load configuration",
-          variant: "destructive",
-        })
-      }
-    }
-    
-    loadConfig()
-  }, [])
-
-  // Update local state when redux state changes
-  useEffect(() => {
-    setSettings(prev => ({
-      ...prev,
-      openmemory: configState.openmemory || { custom_instructions: null },
-      mem0: configState.mem0
-    }))
-  }, [configState.openmemory, configState.mem0])
-
-  const handleSave = async () => {
-    try {
-      await saveConfig({ 
-        openmemory: settings.openmemory,
-        mem0: settings.mem0 
-      })
-      toast({
-        title: "Settings saved",
-        description: "Your configuration has been updated successfully.",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save configuration",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleReset = async () => {
-    try {
-      await resetConfig()
-      toast({
-        title: "Settings reset",
-        description: "Configuration has been reset to default values.",
-      })
-      await fetchConfig()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reset configuration",
-        variant: "destructive",
-      })
-    }
-  }
+  const userId = useSelector((state: RootState) => state.profile.userId);
 
   return (
-    <div className="text-white py-6">
-      <div className="container mx-auto py-10 max-w-4xl">
-        <div className="flex justify-between items-center mb-8">
-          <div className="animate-fade-slide-down">
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-            <p className="text-muted-foreground mt-1">Manage your OpenMemory and Mem0 configuration</p>
-          </div>
-          <div className="flex space-x-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="border-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-zinc-50 animate-fade-slide-down" disabled={isLoading}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset Defaults
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset Configuration?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will reset all settings to the system defaults. Any custom configuration will be lost.
-                    API keys will be set to use environment variables.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleReset} className="bg-red-600 hover:bg-red-700">
-                    Reset
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            
-            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 animate-fade-slide-down" disabled={isLoading}>
-              <SaveIcon className="mr-2 h-4 w-4" />
-              {isLoading ? "Saving..." : "Save Configuration"}
-            </Button>
-          </div>
+    <div className="container py-6">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white">Settings</h1>
+          <p className="text-zinc-400 mt-2">
+            Manage your OpenMemory preferences and account settings
+          </p>
         </div>
 
-        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "form" | "json")} className="w-full animate-fade-slide-down delay-1">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="form">Form View</TabsTrigger>
-            <TabsTrigger value="json">JSON Editor</TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="text-white">Account Information</CardTitle>
+              <CardDescription className="text-zinc-400">
+                Your current account details
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-zinc-300">
+                    User ID
+                  </label>
+                  <p className="text-white mt-1">{userId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-zinc-300">
+                    Status
+                  </label>
+                  <p className="text-green-400 mt-1">Active</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <TabsContent value="form">
-            <FormView settings={settings} onChange={setSettings} />
-          </TabsContent>
-
-          <TabsContent value="json">
-            <Card>
-              <CardHeader>
-                <CardTitle>JSON Configuration</CardTitle>
-                <CardDescription>Edit the entire configuration directly as JSON</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <JsonEditor value={settings} onChange={setSettings} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="text-white">About OpenMemory</CardTitle>
+              <CardDescription className="text-zinc-400">
+                Information about this OpenMemory instance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-zinc-300">
+                    Version
+                  </label>
+                  <p className="text-white mt-1">1.0.0</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-zinc-300">
+                    Backend API
+                  </label>
+                  <p className="text-white mt-1">
+                    {process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
-  )
+  );
 }

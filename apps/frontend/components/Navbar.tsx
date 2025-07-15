@@ -9,18 +9,11 @@ import { usePathname } from "next/navigation";
 import { CreateMemoryDialog } from "@/app/memories/components/CreateMemoryDialog";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import Image from "next/image";
-import { useStats } from "@/hooks/useStats";
-import { useAppsApi } from "@/hooks/useAppsApi";
 import { Settings } from "lucide-react";
-import { useConfig } from "@/hooks/useConfig";
 
 export function Navbar() {
   const pathname = usePathname();
-
   const memoriesApi = useMemoriesApi();
-  const appsApi = useAppsApi();
-  const statsApi = useStats();
-  const configApi = useConfig();
 
   // Define route matchers with typed parameter extraction
   const routeBasedFetchMapping: {
@@ -30,34 +23,16 @@ export function Navbar() {
     {
       match: /^\/memory\/([^/]+)$/,
       getFetchers: ({ memory_id }) => [
-        () => memoriesApi.fetchMemoryById(memory_id),
-        () => memoriesApi.fetchAccessLogs(memory_id),
-        () => memoriesApi.fetchRelatedMemories(memory_id),
-      ],
-    },
-    {
-      match: /^\/apps\/([^/]+)$/,
-      getFetchers: ({ app_id }) => [
-        () => appsApi.fetchAppMemories(app_id),
-        () => appsApi.fetchAppAccessedMemories(app_id),
-        () => appsApi.fetchAppDetails(app_id),
+        () => memoriesApi.fetchMemoById(memory_id),
       ],
     },
     {
       match: /^\/memories$/,
-      getFetchers: () => [memoriesApi.fetchMemories],
-    },
-    {
-      match: /^\/apps$/,
-      getFetchers: () => [appsApi.fetchApps],
+      getFetchers: () => [() => memoriesApi.fetchMemos({ limit: 10 })],
     },
     {
       match: /^\/$/,
-      getFetchers: () => [statsApi.fetchStats, memoriesApi.fetchMemories],
-    },
-    {
-      match: /^\/settings$/,
-      getFetchers: () => [configApi.fetchConfig],
+      getFetchers: () => [() => memoriesApi.fetchMemos({ limit: 10 })],
     },
   ];
 
@@ -67,9 +42,6 @@ export function Navbar() {
       if (match) {
         if (route.match.source.includes("memory")) {
           return route.getFetchers({ memory_id: match[1] });
-        }
-        if (route.match.source.includes("app")) {
-          return route.getFetchers({ app_id: match[1] });
         }
         return route.getFetchers({});
       }
@@ -122,18 +94,6 @@ export function Navbar() {
               Memories
             </Button>
           </Link>
-          <Link href="/apps">
-            <Button
-              variant="outline"
-              size="sm"
-              className={`flex items-center gap-2 border-none ${
-                isActive("/apps") ? activeClass : inactiveClass
-              }`}
-            >
-              <RiApps2AddFill />
-              Apps
-            </Button>
-          </Link>
           <Link href="/settings">
             <Button
               variant="outline"
@@ -149,12 +109,12 @@ export function Navbar() {
         </div>
         <div className="flex items-center gap-4">
           <Button
-            onClick={handleRefresh}
             variant="outline"
             size="sm"
-            className="border-zinc-700/50 bg-zinc-900 hover:bg-zinc-800"
+            onClick={handleRefresh}
+            className="flex items-center gap-2 border-none text-zinc-300 hover:text-white"
           >
-            <FiRefreshCcw className="transition-transform duration-300 group-hover:rotate-180" />
+            <FiRefreshCcw className="h-4 w-4" />
             Refresh
           </Button>
           <CreateMemoryDialog />

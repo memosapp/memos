@@ -1,6 +1,15 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Memory } from '@/components/types';
-import { SimpleMemory } from '@/hooks/useMemoriesApi';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { Memo, Memory, Category } from "@/components/types";
+
+// Define the simplified memory type for selectedMemory backwards compatibility
+export interface SimpleMemory {
+  id: string;
+  text: string;
+  created_at: string;
+  state: string;
+  categories: string[];
+  app_name: string;
+}
 
 interface AccessLogEntry {
   id: string;
@@ -10,27 +19,29 @@ interface AccessLogEntry {
 
 // Define the shape of the memories state
 interface MemoriesState {
-  memories: Memory[];
+  memos: Memo[];
+  memories: Memory[]; // Keep for backward compatibility
   selectedMemory: SimpleMemory | null;
   accessLogs: AccessLogEntry[];
   relatedMemories: Memory[];
-  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
   selectedMemoryIds: string[];
 }
 
 const initialState: MemoriesState = {
+  memos: [],
   memories: [],
   selectedMemory: null,
   accessLogs: [],
   relatedMemories: [],
-  status: 'idle',
+  status: "idle",
   error: null,
   selectedMemoryIds: [],
 };
 
 const memoriesSlice = createSlice({
-  name: 'memories',
+  name: "memories",
   initialState,
   reducers: {
     setSelectedMemory: (state, action: PayloadAction<SimpleMemory | null>) => {
@@ -40,22 +51,43 @@ const memoriesSlice = createSlice({
       state.accessLogs = action.payload;
     },
     setMemoriesLoading: (state) => {
-      state.status = 'loading';
+      state.status = "loading";
       state.error = null;
-      state.memories = []; // Optionally clear old memories on new load
+      state.memos = [];
+      state.memories = [];
     },
-    setMemoriesSuccess: (state, action: PayloadAction<Memory[]>) => {
-      state.status = 'succeeded';
-      state.memories = action.payload;
+    setMemoriesSuccess: (state, action: PayloadAction<Memo[] | Memory[]>) => {
+      state.status = "succeeded";
       state.error = null;
+
+      // Check if it's the new Memo format or legacy Memory format
+      if (action.payload.length > 0 && "sessionId" in action.payload[0]) {
+        // New Memo format
+        state.memos = action.payload as Memo[];
+        // Convert to legacy format for backward compatibility
+        state.memories = (action.payload as Memo[]).map((memo: Memo) => ({
+          id: memo.id.toString(),
+          memory: memo.content,
+          metadata: { summary: memo.summary, importance: memo.importance },
+          client: "api" as const,
+          categories: (memo.tags || []) as Category[],
+          created_at: memo.createdAt.getTime(),
+          app_name: memo.sessionId,
+          state: "active" as const,
+        }));
+      } else {
+        // Legacy Memory format
+        state.memories = action.payload as Memory[];
+      }
     },
     setMemoriesError: (state, action: PayloadAction<string>) => {
-      state.status = 'failed';
+      state.status = "failed";
       state.error = action.payload;
     },
     resetMemoriesState: (state) => {
-      state.status = 'idle';
+      state.status = "idle";
       state.error = null;
+      state.memos = [];
       state.memories = [];
       state.selectedMemoryIds = [];
       state.selectedMemory = null;
@@ -68,10 +100,12 @@ const memoriesSlice = createSlice({
       }
     },
     deselectMemory: (state, action: PayloadAction<string>) => {
-      state.selectedMemoryIds = state.selectedMemoryIds.filter(id => id !== action.payload);
+      state.selectedMemoryIds = state.selectedMemoryIds.filter(
+        (id) => id !== action.payload
+      );
     },
     selectAllMemories: (state) => {
-      state.selectedMemoryIds = state.memories.map(memory => memory.id);
+      state.selectedMemoryIds = state.memories.map((memory) => memory.id);
     },
     clearSelection: (state) => {
       state.selectedMemoryIds = [];
@@ -80,12 +114,11 @@ const memoriesSlice = createSlice({
       state.relatedMemories = action.payload;
     },
   },
-  // extraReducers section is removed as API calls are handled by the hook
 });
 
-export const { 
-  setMemoriesLoading, 
-  setMemoriesSuccess, 
+export const {
+  setMemoriesLoading,
+  setMemoriesSuccess,
   setMemoriesError,
   resetMemoriesState,
   selectMemory,
@@ -94,7 +127,7 @@ export const {
   clearSelection,
   setSelectedMemory,
   setAccessLogs,
-  setRelatedMemories
+  setRelatedMemories,
 } = memoriesSlice.actions;
 
-export default memoriesSlice.reducer; 
+export default memoriesSlice.reducer;

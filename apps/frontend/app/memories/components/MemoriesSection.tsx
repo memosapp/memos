@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Category, Client } from "../../../components/types";
+import { Memo } from "@/components/types";
 import { MemoryTable } from "./MemoryTable";
 import { MemoryPagination } from "./MemoryPagination";
 import { CreateMemoryDialog } from "./CreateMemoryDialog";
@@ -8,44 +8,69 @@ import { PageSizeSelector } from "./PageSizeSelector";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MemoryTableSkeleton } from "@/skeleton/MemoryTableSkeleton";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "@/store/store";
+import { setMemoriesSuccess } from "@/store/memoriesSlice";
 
 export function MemoriesSection() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { fetchMemories } = useMemoriesApi();
-  const [memories, setMemories] = useState<any[]>([]);
+  const dispatch = useDispatch();
+  const { fetchMemos, searchMemos } = useMemoriesApi();
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const userId = useSelector((state: RootState) => state.profile.userId);
+  const memories = useSelector((state: RootState) => state.memories.memories);
 
   const currentPage = Number(searchParams.get("page")) || 1;
   const itemsPerPage = Number(searchParams.get("size")) || 10;
-  const [selectedCategory, setSelectedCategory] = useState<Category | "all">(
-    "all"
-  );
-  const [selectedClient, setSelectedClient] = useState<Client | "all">("all");
+  const searchQuery = searchParams.get("search") || "";
 
   useEffect(() => {
-    const loadMemories = async () => {
+    const loadMemos = async () => {
       setIsLoading(true);
       try {
-        const searchQuery = searchParams.get("search") || "";
-        const result = await fetchMemories(
-          searchQuery,
-          currentPage,
-          itemsPerPage
-        );
-        setMemories(result.memories);
-        setTotalItems(result.total);
-        setTotalPages(result.pages);
+        let result: Memo[];
+
+        if (searchQuery) {
+          // Use search API for queries
+          result = await searchMemos({
+            query: searchQuery,
+            userId: userId,
+            limit: itemsPerPage,
+          });
+        } else {
+          // Use regular fetch for listing
+          result = await fetchMemos({
+            userId: userId,
+            limit: itemsPerPage,
+            offset: (currentPage - 1) * itemsPerPage,
+          });
+        }
+
+        // Dispatch to store so MemoryTable can access the data
+        dispatch(setMemoriesSuccess(result));
+        setTotalItems(result.length); // For now, since backend doesn't return total count
       } catch (error) {
-        console.error("Failed to fetch memories:", error);
+        console.error("Failed to fetch memos:", error);
+        dispatch(setMemoriesSuccess([]));
+        setTotalItems(0);
       }
       setIsLoading(false);
     };
 
-    loadMemories();
-  }, [currentPage, itemsPerPage, fetchMemories, searchParams]);
+    loadMemos();
+  }, [
+    currentPage,
+    itemsPerPage,
+    searchQuery,
+    fetchMemos,
+    searchMemos,
+    userId,
+    dispatch,
+  ]);
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const setCurrentPage = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -76,69 +101,36 @@ export function MemoriesSection() {
 
   return (
     <div className="w-full bg-transparent">
-      <div>
-        {memories.length > 0 ? (
-          <>
-            <MemoryTable />
-            <div className="flex items-center justify-between mt-4">
-              <PageSizeSelector
-                pageSize={itemsPerPage}
-                onPageSizeChange={handlePageSizeChange}
-              />
-              <div className="text-sm text-zinc-500 mr-2">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
-                {totalItems} memories
-              </div>
-              <MemoryPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-zinc-800 p-3 mb-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-6 w-6 text-zinc-400"
-              >
-                <path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
-                <path d="M16 2v6h6"></path>
-                <path d="M12 18v-6"></path>
-                <path d="M9 15h6"></path>
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium">No memories found</h3>
-            <p className="text-zinc-400 mt-1 mb-4">
-              {selectedCategory !== "all" || selectedClient !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first memory to see it here"}
-            </p>
-            {selectedCategory !== "all" || selectedClient !== "all" ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedCategory("all");
-                  setSelectedClient("all");
-                }}
-              >
-                Clear Filters
-              </Button>
-            ) : (
-              <CreateMemoryDialog />
-            )}
-          </div>
-        )}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-white">
+          {searchQuery ? `Search results for "${searchQuery}"` : "All Memories"}
+        </h2>
+        <CreateMemoryDialog />
+      </div>
+
+      <MemoryTable />
+
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-zinc-400">
+            Showing {memories.length} of {totalItems} memories
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <PageSizeSelector
+            pageSize={itemsPerPage}
+            onPageSizeChange={handlePageSizeChange}
+          />
+
+          {!searchQuery && (
+            <MemoryPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

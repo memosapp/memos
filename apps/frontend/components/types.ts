@@ -1,13 +1,75 @@
-export type Category = "personal" | "work" | "health" | "finance" | "travel" | "education" | "preferences" | "relationships"
-export type Client = "chrome" | "chatgpt" | "cursor" | "windsurf" | "terminal" | "api"
+export type Category =
+  | "personal"
+  | "work"
+  | "health"
+  | "finance"
+  | "travel"
+  | "education"
+  | "preferences"
+  | "relationships";
+export type Client =
+  | "chrome"
+  | "chatgpt"
+  | "cursor"
+  | "windsurf"
+  | "terminal"
+  | "api";
 
+export enum AuthorRole {
+  USER = "user",
+  AGENT = "agent",
+  SYSTEM = "system",
+}
+
+export interface Memo {
+  id: number;
+  sessionId: string;
+  userId: string;
+  content: string;
+  summary?: string;
+  authorRole: AuthorRole;
+  importance?: number;
+  accessCount?: number;
+  tags?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateMemoRequest {
+  sessionId: string;
+  userId: string;
+  content: string;
+  summary?: string;
+  authorRole: AuthorRole;
+  importance?: number;
+  tags?: string[];
+}
+
+export interface UpdateMemoRequest {
+  sessionId?: string;
+  userId?: string;
+  content?: string;
+  summary?: string;
+  authorRole?: AuthorRole;
+  importance?: number;
+  tags?: string[];
+}
+
+export interface SearchRequest {
+  query: string;
+  userId?: string;
+  sessionId?: string;
+  limit?: number;
+}
+
+// Legacy interface for backward compatibility
 export interface Memory {
-  id: string
-  memory: string
-  metadata: any
-  client: Client
-  categories: Category[]
-  created_at: number
-  app_name: string
-  state: "active" | "paused" | "archived" | "deleted"
+  id: string;
+  memory: string;
+  metadata: any;
+  client: Client;
+  categories: Category[];
+  created_at: number;
+  app_name: string;
+  state: "active" | "paused" | "archived" | "deleted";
 }
