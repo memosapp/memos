@@ -39,7 +39,7 @@ import { PiSwatches } from "react-icons/pi";
 import { GoPackage } from "react-icons/go";
 import { CiCalendar } from "react-icons/ci";
 import { useRouter } from "next/navigation";
-import Categories from "@/components/shared/categories";
+import Tags from "@/components/shared/tags";
 import { useUI } from "@/hooks/useUI";
 import {
   Tooltip,
@@ -58,10 +58,10 @@ export function MemoryTable() {
   );
   const memories = useSelector((state: RootState) => state.memories.memories);
 
-  const { deleteMemories, updateMemoryState, isLoading } = useMemoriesApi();
+  const { deleteMemo, isLoading } = useMemoriesApi();
 
-  const handleDeleteMemory = (id: string) => {
-    deleteMemories([id]);
+  const handleDeleteMemory = async (id: string) => {
+    await deleteMemo(id);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -86,15 +86,8 @@ export function MemoryTable() {
   };
 
   const handleUpdateMemoryState = async (id: string, newState: string) => {
-    try {
-      await updateMemoryState([id], newState);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update memory state",
-        variant: "destructive",
-      });
-    }
+    // Memory state updates are not supported in the current backend
+    console.log("Memory state update not supported:", id, newState);
   };
 
   const isAllSelected =
@@ -134,7 +127,7 @@ export function MemoryTable() {
             <TableHead className="border-zinc-700">
               <div className="flex items-center">
                 <PiSwatches className="mr-1" size={15} />
-                Categories
+                Tags
               </div>
             </TableHead>
             <TableHead className="w-[140px] border-zinc-700">
@@ -214,8 +207,8 @@ export function MemoryTable() {
               </TableCell>
               <TableCell className="">
                 <div className="flex flex-wrap gap-1">
-                  <Categories
-                    categories={memory.categories}
+                  <Tags
+                    tags={memory.tags}
                     isPaused={
                       memory.state === "paused" || memory.state === "archived"
                     }

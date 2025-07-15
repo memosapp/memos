@@ -73,7 +73,6 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
       setIsLoading(true);
       setError(null);
       dispatch(setMemoriesLoading());
-
       try {
         const params = new URLSearchParams();
 
@@ -122,11 +121,12 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
         // Convert to the format expected by the selectedMemory state
         const selectedMemo = {
           id: memo.id.toString(),
-          text: memo.content,
-          created_at: memo.createdAt.toISOString(),
-          state: "active",
-          categories: memo.tags || [],
+          memory: memo.content,
+          metadata: { summary: memo.summary, importance: memo.importance },
+          tags: memo.tags || [],
+          created_at: memo.createdAt.getTime(),
           app_name: memo.sessionId, // Using sessionId as app_name for now
+          state: "active" as const,
         };
 
         dispatch(setSelectedMemory(selectedMemo));

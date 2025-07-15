@@ -1,14 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Memo, Memory, Category } from "@/components/types";
+import { Memo, Memory } from "@/components/types";
 
 // Define the simplified memory type for selectedMemory backwards compatibility
 export interface SimpleMemory {
   id: string;
-  text: string;
-  created_at: string;
-  state: string;
-  categories: string[];
+  memory: string;
+  metadata: any;
+  tags: string[];
+  created_at: number;
   app_name: string;
+  state: "active" | "paused" | "archived" | "deleted";
 }
 
 interface AccessLogEntry {
@@ -64,15 +65,23 @@ const memoriesSlice = createSlice({
       if (action.payload.length > 0 && "sessionId" in action.payload[0]) {
         // New Memo format
         state.memos = action.payload as Memo[];
-        // Convert to legacy format for backward compatibility
+        // Convert all Memos to legacy Memory format for backward compatibility
         state.memories = (action.payload as Memo[]).map((memo: Memo) => ({
           id: memo.id.toString(),
           memory: memo.content,
-          metadata: { summary: memo.summary, importance: memo.importance },
-          client: "api" as const,
-          categories: (memo.tags || []) as Category[],
-          created_at: memo.createdAt.getTime(),
-          app_name: memo.sessionId,
+          metadata: {
+            sessionId: memo.sessionId,
+            userId: memo.userId,
+            summary: memo.summary,
+            authorRole: memo.authorRole,
+            importance: memo.importance,
+            accessCount: memo.accessCount,
+            createdAt: memo.createdAt,
+            updatedAt: memo.updatedAt,
+          },
+          tags: memo.tags || [],
+          created_at: new Date(memo.createdAt).getTime(),
+          app_name: "api",
           state: "active" as const,
         }));
       } else {

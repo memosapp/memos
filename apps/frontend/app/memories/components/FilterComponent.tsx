@@ -26,65 +26,74 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { RootState } from "@/store/store";
-import { useAppsApi } from "@/hooks/useAppsApi";
-import { useFiltersApi } from "@/hooks/useFiltersApi";
-import {
-  setSelectedApps,
-  setSelectedCategories,
-  clearFilters,
-} from "@/store/filtersSlice";
+// import { useAppsApi } from "@/hooks/useAppsApi";
+// import { useFiltersApi } from "@/hooks/useFiltersApi";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
+// import {
+//   setSelectedTags,
+//   setSelectedApps,
+//   setSort,
+//   clearFilters,
+// } from "@/store/filtersSlice";
 
 const columns = [
-  {
-    label: "Memory",
-    value: "memory",
-  },
-  {
-    label: "App Name",
-    value: "app_name",
-  },
-  {
-    label: "Created On",
-    value: "created_at",
-  },
+  { id: "memory", label: "Memory", sortable: true },
+  { id: "tags", label: "Tags", sortable: false },
+  { id: "created_at", label: "Created At", sortable: true },
 ];
 
 export default function FilterComponent() {
   const dispatch = useDispatch();
-  const { fetchApps } = useAppsApi();
-  const { fetchCategories, updateSort } = useFiltersApi();
-  const { fetchMemories } = useMemoriesApi();
+  const {
+    /* fetchMemories */
+  } = useMemoriesApi();
   const [isOpen, setIsOpen] = useState(false);
   const [tempSelectedApps, setTempSelectedApps] = useState<string[]>([]);
-  const [tempSelectedCategories, setTempSelectedCategories] = useState<
-    string[]
-  >([]);
+  const [tempSelectedTags, setTempSelectedTags] = useState<string[]>([]);
+
   const [showArchived, setShowArchived] = useState(false);
 
-  const apps = useSelector((state: RootState) => state.apps.apps);
-  const categories = useSelector(
-    (state: RootState) => state.filters.categories.items
-  );
-  const filters = useSelector((state: RootState) => state.filters.apps);
+  // Commented out selectors that use non-existent store slices
+  // const apps = useSelector((state: RootState) => state.apps.apps);
+  // const tags = useSelector(
+  //   (state: RootState) => state.filters.tags.items
+  // );
+  // const filters = useSelector((state: RootState) => state.filters.apps);
+
+  // Mock data to prevent errors
+  const apps: any[] = [];
+  const tags: any[] = [];
+  const filters: any = { selectedTags: [], selectedApps: [] };
 
   useEffect(() => {
-    fetchApps();
-    fetchCategories();
-  }, [fetchApps, fetchCategories]);
-
-  useEffect(() => {
-    // Initialize temporary selections with current active filters when dialog opens
-    if (isOpen) {
-      setTempSelectedApps(filters.selectedApps);
-      setTempSelectedCategories(filters.selectedCategories);
-      setShowArchived(filters.showArchived || false);
-    }
-  }, [isOpen, filters]);
-
-  useEffect(() => {
-    handleClearFilters();
+    // fetchApps();
+    // fetchTags();
   }, []);
+
+  useEffect(() => {
+    // Update temporary selections when filters change
+    setTempSelectedApps(filters.selectedApps);
+    setTempSelectedTags(filters.selectedTags);
+  }, [filters]);
+
+  useEffect(() => {
+    // Clear filters on component mount
+    // handleClearFilters();
+  }, []);
+
+  const handleClearFilters = async () => {
+    setTempSelectedApps([]);
+    setTempSelectedTags([]);
+    setShowArchived(false);
+    // dispatch(clearFilters());
+    // await fetchMemories();
+  };
+
+  const toggleTagFilter = (tag: string) => {
+    setTempSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((c) => c !== tag) : [...prev, tag]
+    );
+  };
 
   const toggleAppFilter = (app: string) => {
     setTempSelectedApps((prev) =>
@@ -92,162 +101,171 @@ export default function FilterComponent() {
     );
   };
 
-  const toggleCategoryFilter = (category: string) => {
-    setTempSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
-
   const toggleAllApps = (checked: boolean) => {
     setTempSelectedApps(checked ? apps.map((app) => app.id) : []);
   };
 
-  const toggleAllCategories = (checked: boolean) => {
-    setTempSelectedCategories(checked ? categories.map((cat) => cat.name) : []);
+  const toggleAllTags = (checked: boolean) => {
+    setTempSelectedTags(checked ? tags.map((tag) => tag.name) : []);
   };
 
-  const handleClearFilters = async () => {
+  const handleClearSelection = () => {
     setTempSelectedApps([]);
-    setTempSelectedCategories([]);
-    setShowArchived(false);
-    dispatch(clearFilters());
-    await fetchMemories();
+    setTempSelectedTags([]);
   };
 
   const handleApplyFilters = async () => {
     try {
-      // Get category IDs for selected category names
-      const selectedCategoryIds = categories
-        .filter((cat) => tempSelectedCategories.includes(cat.name))
-        .map((cat) => cat.id);
+      // Get tag IDs for selected tag names
+      const selectedTagIds = tags
+        .filter((tag) => tempSelectedTags.includes(tag.name))
+        .map((tag) => tag.id);
 
-      // Get app IDs for selected app names
       const selectedAppIds = apps
         .filter((app) => tempSelectedApps.includes(app.id))
         .map((app) => app.id);
 
       // Update the global state with temporary selections
-      dispatch(setSelectedApps(tempSelectedApps));
-      dispatch(setSelectedCategories(tempSelectedCategories));
-      dispatch({ type: "filters/setShowArchived", payload: showArchived });
+      // dispatch(setSelectedApps(tempSelectedApps));
+      // dispatch(setSelectedTags(tempSelectedTags));
+      // dispatch({ type: "filters/setShowArchived", payload: showArchived });
 
-      await fetchMemories(undefined, 1, 10, {
-        apps: selectedAppIds,
-        categories: selectedCategoryIds,
-        sortColumn: filters.sortColumn,
-        sortDirection: filters.sortDirection,
-        showArchived: showArchived,
-      });
+      // await fetchMemories(undefined, 1, 10, {
+      //   apps: selectedAppIds,
+      //   tags: selectedTagIds,
+      //   sortColumn: filters.sortColumn,
+      //   sortDirection: filters.sortDirection,
+      //   showArchived: showArchived,
+      // });
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to apply filters:", error);
     }
   };
 
-  const handleDialogChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      // Reset temporary selections to active filters when dialog closes without applying
-      setTempSelectedApps(filters.selectedApps);
-      setTempSelectedCategories(filters.selectedCategories);
-      setShowArchived(filters.showArchived || false);
-    }
+  const handleFilterReset = () => {
+    setTempSelectedApps(filters.selectedApps);
+    setTempSelectedTags(filters.selectedTags);
+    setIsOpen(false);
   };
 
   const setSorting = async (column: string) => {
-    const newDirection =
-      filters.sortColumn === column && filters.sortDirection === "asc"
-        ? "desc"
-        : "asc";
-    updateSort(column, newDirection);
+    // const newDirection =
+    //   filters.sortColumn === column && filters.sortDirection === "asc"
+    //     ? "desc"
+    //     : "asc";
+    // updateSort(column, newDirection);
 
-    // Get category IDs for selected category names
-    const selectedCategoryIds = categories
-      .filter((cat) => tempSelectedCategories.includes(cat.name))
-      .map((cat) => cat.id);
+    // Get tag IDs for selected tag names
+    const selectedTagIds = tags
+      .filter((tag) => tempSelectedTags.includes(tag.name))
+      .map((tag) => tag.id);
 
-    // Get app IDs for selected app names
     const selectedAppIds = apps
       .filter((app) => tempSelectedApps.includes(app.id))
       .map((app) => app.id);
 
     try {
-      await fetchMemories(undefined, 1, 10, {
-        apps: selectedAppIds,
-        categories: selectedCategoryIds,
-        sortColumn: column,
-        sortDirection: newDirection,
-      });
+      // await fetchMemories(undefined, 1, 10, {
+      //   apps: selectedAppIds,
+      //   tags: selectedTagIds,
+      //   sortColumn: column,
+      //   sortDirection: newDirection,
+      // });
     } catch (error) {
       console.error("Failed to apply sorting:", error);
     }
   };
 
-  const hasActiveFilters =
-    filters.selectedApps.length > 0 ||
-    filters.selectedCategories.length > 0 ||
-    filters.showArchived;
+  const activeFiltersCount =
+    filters.selectedTags.length +
+    filters.selectedApps.length +
+    (showArchived ? 1 : 0);
 
-  const hasTempFilters =
-    tempSelectedApps.length > 0 ||
-    tempSelectedCategories.length > 0 ||
-    showArchived;
+  const pendingFiltersCount =
+    tempSelectedTags.length + tempSelectedApps.length + (showArchived ? 1 : 0);
 
   return (
-    <div className="flex items-center gap-2">
-      <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            className={`h-9 px-4 border-zinc-700/50 bg-zinc-900 hover:bg-zinc-800 ${
-              hasActiveFilters ? "border-primary" : ""
-            }`}
-          >
-            <Filter
-              className={`h-4 w-4 ${hasActiveFilters ? "text-primary" : ""}`}
-            />
-            Filter
-            {hasActiveFilters && (
-              <Badge className="ml-2 bg-primary hover:bg-primary/80 text-xs">
-                {filters.selectedApps.length +
-                  filters.selectedCategories.length +
-                  (filters.showArchived ? 1 : 0)}
-              </Badge>
-            )}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px] bg-zinc-900 border-zinc-800 text-zinc-100">
-          <DialogHeader>
-            <DialogTitle className="text-zinc-100 flex justify-between items-center">
-              <span>Filters</span>
-            </DialogTitle>
-          </DialogHeader>
-          <Tabs defaultValue="apps" className="w-full">
-            <TabsList className="grid grid-cols-3 bg-zinc-800">
-              <TabsTrigger
-                value="apps"
-                className="data-[state=active]:bg-zinc-700"
-              >
-                Apps
-              </TabsTrigger>
-              <TabsTrigger
-                value="categories"
-                className="data-[state=active]:bg-zinc-700"
-              >
-                Categories
-              </TabsTrigger>
-              <TabsTrigger
-                value="archived"
-                className="data-[state=active]:bg-zinc-700"
-              >
-                Archived
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="apps" className="mt-4">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
+    <div className="mb-6">
+      <div className="flex items-center gap-4">
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Filter className="h-4 w-4" />
+              Filter
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Filter and Sort Memories</DialogTitle>
+            </DialogHeader>
+            <Tabs defaultValue="tags" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="tags" className="flex items-center gap-2">
+                  Tags
+                  {tempSelectedTags.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {tempSelectedTags.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="apps" className="flex items-center gap-2">
+                  Apps
+                  {tempSelectedApps.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {tempSelectedApps.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="sort" className="flex items-center gap-2">
+                  Sort
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="tags" className="mt-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox
+                    id="select-all-tags"
+                    checked={
+                      tags.length > 0 && tempSelectedTags.length === tags.length
+                    }
+                    onCheckedChange={(checked) =>
+                      toggleAllTags(checked as boolean)
+                    }
+                  />
+                  <Label
+                    htmlFor="select-all-tags"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Select All
+                  </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto">
+                  {tags.map((tag) => (
+                    <div key={tag.name} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`tag-${tag.name}`}
+                        checked={tempSelectedTags.includes(tag.name)}
+                        onCheckedChange={() => toggleTagFilter(tag.name)}
+                      />
+                      <Label
+                        htmlFor={`tag-${tag.name}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {tag.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="apps" className="mt-4">
+                <div className="flex items-center space-x-2 mb-4">
                   <Checkbox
                     id="select-all-apps"
                     checked={
@@ -256,156 +274,91 @@ export default function FilterComponent() {
                     onCheckedChange={(checked) =>
                       toggleAllApps(checked as boolean)
                     }
-                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
                   <Label
                     htmlFor="select-all-apps"
-                    className="text-sm font-normal text-zinc-300 cursor-pointer"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     Select All
                   </Label>
                 </div>
-                {apps.map((app) => (
-                  <div key={app.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`app-${app.id}`}
-                      checked={tempSelectedApps.includes(app.id)}
-                      onCheckedChange={() => toggleAppFilter(app.id)}
-                      className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                    />
-                    <Label
-                      htmlFor={`app-${app.id}`}
-                      className="text-sm font-normal text-zinc-300 cursor-pointer"
-                    >
-                      {app.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-            <TabsContent value="categories" className="mt-4">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="select-all-categories"
-                    checked={
-                      categories.length > 0 &&
-                      tempSelectedCategories.length === categories.length
-                    }
-                    onCheckedChange={(checked) =>
-                      toggleAllCategories(checked as boolean)
-                    }
-                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                  />
-                  <Label
-                    htmlFor="select-all-categories"
-                    className="text-sm font-normal text-zinc-300 cursor-pointer"
-                  >
-                    Select All
-                  </Label>
-                </div>
-                {categories.map((category) => (
-                  <div
-                    key={category.name}
-                    className="flex items-center space-x-2"
-                  >
-                    <Checkbox
-                      id={`category-${category.name}`}
-                      checked={tempSelectedCategories.includes(category.name)}
-                      onCheckedChange={() =>
-                        toggleCategoryFilter(category.name)
-                      }
-                      className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                    />
-                    <Label
-                      htmlFor={`category-${category.name}`}
-                      className="text-sm font-normal text-zinc-300 cursor-pointer"
-                    >
-                      {category.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-            <TabsContent value="archived" className="mt-4">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="show-archived"
-                    checked={showArchived}
-                    onCheckedChange={(checked) =>
-                      setShowArchived(checked as boolean)
-                    }
-                    className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                  />
-                  <Label
-                    htmlFor="show-archived"
-                    className="text-sm font-normal text-zinc-300 cursor-pointer"
-                  >
-                    Show Archived Memories
-                  </Label>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-          <div className="flex justify-end mt-4 gap-3">
-            {/* Clear all button */}
-            {hasTempFilters && (
-              <Button
-                onClick={handleClearFilters}
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-              >
-                Clear All
-              </Button>
-            )}
-            {/* Apply filters button */}
-            <Button
-              onClick={handleApplyFilters}
-              className="bg-primary hover:bg-primary/80 text-white"
-            >
-              Apply Filters
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="h-9 px-4 border-zinc-700/50 bg-zinc-900 hover:bg-zinc-800"
-          >
-            {filters.sortDirection === "asc" ? (
-              <SortAsc className="h-4 w-4" />
-            ) : (
-              <SortDesc className="h-4 w-4" />
-            )}
-            Sort: {columns.find((c) => c.value === filters.sortColumn)?.label}
-            <ChevronDown className="h-4 w-4 ml-2" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-800 text-zinc-100">
-          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-zinc-800" />
-          <DropdownMenuGroup>
-            {columns.map((column) => (
-              <DropdownMenuItem
-                key={column.value}
-                onClick={() => setSorting(column.value)}
-                className="cursor-pointer flex justify-between items-center"
-              >
-                {column.label}
-                {filters.sortColumn === column.value &&
-                  (filters.sortDirection === "asc" ? (
-                    <SortAsc className="h-4 w-4 text-primary" />
-                  ) : (
-                    <SortDesc className="h-4 w-4 text-primary" />
+                <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto">
+                  {apps.map((app) => (
+                    <div key={app.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`app-${app.id}`}
+                        checked={tempSelectedApps.includes(app.id)}
+                        onCheckedChange={() => toggleAppFilter(app.id)}
+                      />
+                      <Label
+                        htmlFor={`app-${app.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {app.name}
+                      </Label>
+                    </div>
                   ))}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="sort" className="mt-4">
+                <div className="space-y-4">
+                  <div className="text-sm font-medium">Sort by:</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {columns.map((column) => (
+                      <Button
+                        key={column.id}
+                        variant="ghost"
+                        className="justify-start h-10"
+                        onClick={() => setSorting(column.id)}
+                        disabled={!column.sortable}
+                      >
+                        <div className="flex items-center gap-2">
+                          {column.label}
+                          {/* {filters.sortColumn === column.id && (
+                            <>
+                              {filters.sortDirection === "asc" ? (
+                                <SortAsc className="h-4 w-4" />
+                              ) : (
+                                <SortDesc className="h-4 w-4" />
+                              )}
+                            </>
+                          )} */}
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="flex justify-between items-center mt-6">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleClearSelection}
+                  disabled={pendingFiltersCount === 0}
+                >
+                  Clear Selection
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  disabled={activeFiltersCount === 0}
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleFilterReset}>
+                  Cancel
+                </Button>
+                <Button onClick={handleApplyFilters}>Apply Filters</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,20 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { HiMiniRectangleStack } from "react-icons/hi2"
-import { PiSwatches } from "react-icons/pi"
-import { GoPackage } from "react-icons/go"
-import { CiCalendar } from "react-icons/ci"
-import { MoreHorizontal } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { HiMiniRectangleStack } from "react-icons/hi2";
+import { PiSwatches } from "react-icons/pi";
+import { GoPackage } from "react-icons/go";
+import { CiCalendar } from "react-icons/ci";
+import { MoreHorizontal } from "lucide-react";
 
 export function MemoryTableSkeleton() {
   // Create an array of 5 items for the loading state
-  const loadingRows = Array(5).fill(null)
+  const loadingRows = Array(5).fill(null);
 
   return (
     <div className="rounded-md border">
@@ -26,7 +33,7 @@ export function MemoryTableSkeleton() {
             <TableHead className="border-zinc-700">
               <div className="flex items-center">
                 <PiSwatches className="mr-1" size={15} />
-                Categories
+                Tags
               </div>
             </TableHead>
             <TableHead className="w-[140px] border-zinc-700">
@@ -77,5 +84,5 @@ export function MemoryTableSkeleton() {
         </TableBody>
       </Table>
     </div>
-  )
-} 
+  );
+}

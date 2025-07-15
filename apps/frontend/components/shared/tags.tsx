@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "../ui/badge";
 
-type Category = string;
+// Tags are simple strings
 
 const defaultIcon = <CircleHelp className="w-4 h-4 mr-2" />;
 
@@ -129,18 +129,18 @@ const getColor = (label: string): string => {
   return "text-blue-400 bg-blue-500/10 border-blue-500/20";
 };
 
-const Categories = ({
-  categories,
+const Tags = ({
+  tags,
   isPaused = false,
   concat = false,
 }: {
-  categories: Category[];
+  tags: string[];
   isPaused?: boolean;
   concat?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!categories || categories.length === 0) return null;
+  if (!tags || tags.length === 0) return null;
 
   const baseBadgeStyle =
     "backdrop-blur-sm transition-colors hover:bg-opacity-20";
@@ -148,23 +148,21 @@ const Categories = ({
     "text-zinc-500 bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60";
 
   if (concat) {
-    const remainingCount = categories.length - 1;
+    const remainingCount = tags.length - 1;
 
     return (
       <div className="flex flex-wrap gap-2">
-        {/* First category */}
+        {/* First tag */}
         <Badge
           variant="outline"
           className={`${
-            isPaused
-              ? pausedStyle
-              : `${getColor(categories[0])} ${baseBadgeStyle}`
+            isPaused ? pausedStyle : `${getColor(tags[0])} ${baseBadgeStyle}`
           }`}
         >
-          {categories[0]}
+          {tags[0]}
         </Badge>
 
-        {/* Popover for remaining categories */}
+        {/* Popover for remaining tags */}
         {remainingCount > 0 && (
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger
@@ -188,17 +186,17 @@ const Categories = ({
               onMouseLeave={() => setIsOpen(false)}
             >
               <div className="flex flex-col gap-2">
-                {categories.slice(1).map((cat, i) => (
+                {tags.slice(1).map((tag, i) => (
                   <Badge
                     key={i}
                     variant="outline"
                     className={`${
                       isPaused
                         ? pausedStyle
-                        : `${getColor(cat)} ${baseBadgeStyle}`
+                        : `${getColor(tag)} ${baseBadgeStyle}`
                     }`}
                   >
-                    {cat}
+                    {tag}
                   </Badge>
                 ))}
               </div>
@@ -212,19 +210,19 @@ const Categories = ({
   // Default view
   return (
     <div className="flex flex-wrap gap-2">
-      {categories?.map((cat, i) => (
+      {tags?.map((tag, i) => (
         <Badge
           key={i}
           variant="outline"
           className={`${
-            isPaused ? pausedStyle : `${getColor(cat)} ${baseBadgeStyle}`
+            isPaused ? pausedStyle : `${getColor(tag)} ${baseBadgeStyle}`
           }`}
         >
-          {cat}
+          {tag}
         </Badge>
       ))}
     </div>
   );
 };
 
-export default Categories;
+export default Tags;

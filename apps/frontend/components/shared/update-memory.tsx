@@ -30,20 +30,19 @@ const UpdateMemory = ({
   open,
   onOpenChange,
 }: UpdateMemoryProps) => {
-  const { updateMemory, isLoading, fetchMemories, fetchMemoryById } =
-    useMemoriesApi();
+  const { updateMemo, isLoading, fetchMemos, fetchMemoById } = useMemoriesApi();
   const textRef = useRef<HTMLTextAreaElement>(null);
   const pathname = usePathname();
 
   const handleUpdateMemory = async (text: string) => {
     try {
-      await updateMemory(memoryId, text);
+      await updateMemo(memoryId, { content: text });
       toast.success("Memory updated successfully");
       onOpenChange(false);
       if (pathname.includes("memories")) {
-        await fetchMemories();
+        await fetchMemos();
       } else {
-        await fetchMemoryById(memoryId);
+        await fetchMemoById(memoryId);
       }
     } catch (error) {
       console.error(error);
