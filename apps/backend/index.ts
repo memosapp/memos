@@ -71,9 +71,13 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || "password",
 });
 
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not set");
+}
+
 // Initialize Google Gemini AI
 const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 // Helper function to generate embeddings
@@ -98,19 +102,37 @@ async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 // Helper function to convert tags array to PostgreSQL format
-function formatTags(tags?: string[]): string | null {
-  if (!tags || tags.length === 0) return null;
+function formatTags(tags?: string[] | string): string | null {
+  if (!tags) return null;
+
+  // If tags is a string, convert it to array
+  if (typeof tags === "string") {
+    tags = tags.split(",").map((tag) => tag.trim());
+  }
+
+  if (!Array.isArray(tags) || tags.length === 0) return null;
   return `{${tags.map((tag) => `"${tag}"`).join(",")}}`;
 }
 
 // Helper function to parse tags from PostgreSQL format
-function parseTags(tagsString: string | null): string[] {
-  if (!tagsString) return [];
-  // Remove curly braces and split by comma
-  return tagsString
-    .slice(1, -1)
-    .split(",")
-    .map((tag) => tag.replace(/"/g, ""));
+function parseTags(tagsData: string[] | string | null): string[] {
+  if (!tagsData) return [];
+
+  // If it's already an array (from PostgreSQL), return it
+  if (Array.isArray(tagsData)) {
+    return tagsData;
+  }
+
+  // If it's a string in PostgreSQL format, parse it
+  if (typeof tagsData === "string") {
+    // Remove curly braces and split by comma
+    return tagsData
+      .slice(1, -1)
+      .split(",")
+      .map((tag) => tag.replace(/"/g, "").trim());
+  }
+
+  return [];
 }
 
 // API Routes

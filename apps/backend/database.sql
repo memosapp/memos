@@ -18,7 +18,7 @@ CREATE TABLE memos (
     importance REAL DEFAULT 1.0,
     access_count INTEGER DEFAULT 0,
     tags TEXT[],
-    embedding VECTOR(768), -- Gemini embeddings are 768 dimensions
+    embedding VECTOR(3072), -- Gemini embeddings are 3072 dimensions
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -32,8 +32,11 @@ CREATE INDEX idx_memos_updated_at ON memos(updated_at);
 CREATE INDEX idx_memos_importance ON memos(importance);
 CREATE INDEX idx_memos_tags ON memos USING GIN(tags);
 
--- Create a vector index for semantic search (using HNSW algorithm)
-CREATE INDEX idx_memos_embedding ON memos USING hnsw (embedding vector_cosine_ops);
+-- Create a vector index for semantic search
+-- Note: Vector indexes in pgvector are limited to 2000 dimensions
+-- Since Gemini embeddings are 3072 dimensions, we skip the index for now
+-- Vector similarity search will still work, just without the performance optimization
+-- CREATE INDEX idx_memos_embedding ON memos USING hnsw (embedding vector_cosine_ops);
 
 -- A trigger to automatically update the updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
