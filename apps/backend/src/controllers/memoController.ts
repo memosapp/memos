@@ -1,149 +1,18 @@
-import express, { Express, Request, Response } from "express";
-import cors from "cors";
-import { Pool } from "pg";
-import { GoogleGenAI } from "@google/genai";
-import dotenv from "dotenv";
+import { Request, Response } from "express";
+import { pool } from "../config/database";
+import { generateEmbedding } from "../services/embeddingService";
+import { formatTags, parseTags } from "../utils/tagUtils";
+import {
+  AuthorRole,
+  Memo,
+  CreateMemoRequest,
+  UpdateMemoRequest,
+} from "../types";
 
-dotenv.config();
-
-// Type definitions
-export enum AuthorRole {
-  USER = "user",
-  AGENT = "agent",
-  SYSTEM = "system",
-}
-
-export interface Memo {
-  id: number;
-  sessionId: string;
-  userId: string;
-  content: string;
-  summary?: string;
-  authorRole: AuthorRole;
-  importance?: number;
-  accessCount?: number;
-  tags?: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreateMemoRequest {
-  sessionId: string;
-  userId: string;
-  content: string;
-  summary?: string;
-  authorRole: AuthorRole;
-  importance?: number;
-  tags?: string[];
-}
-
-export interface UpdateMemoRequest {
-  sessionId?: string;
-  userId?: string;
-  content?: string;
-  summary?: string;
-  authorRole?: AuthorRole;
-  importance?: number;
-  tags?: string[];
-}
-
-export interface SearchRequest {
-  query: string;
-  userId?: string;
-  sessionId?: string;
-  limit?: number;
-}
-
-// Initialize Express app
-const app: Express = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "5432"),
-  database: process.env.DB_NAME || "memos_db",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "password",
-});
-
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY is not set");
-}
-
-// Initialize Google Gemini AI
-const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
-// Helper function to generate embeddings
-async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    const response = await genAI.models.embedContent({
-      model: "gemini-embedding-001",
-      contents: text,
-    });
-
-    const embedding = response.embeddings?.[0]?.values;
-
-    if (!embedding) {
-      throw new Error("Failed to generate embedding - no values returned");
-    }
-
-    return embedding;
-  } catch (error) {
-    console.error("Error generating embedding:", error);
-    throw new Error("Failed to generate embedding");
-  }
-}
-
-// Helper function to convert tags array to PostgreSQL format
-function formatTags(tags?: string[] | string): string | null {
-  if (!tags) return null;
-
-  // If tags is a string, convert it to array
-  if (typeof tags === "string") {
-    tags = tags.split(",").map((tag) => tag.trim());
-  }
-
-  if (!Array.isArray(tags) || tags.length === 0) return null;
-  return `{${tags.map((tag) => `"${tag}"`).join(",")}}`;
-}
-
-// Helper function to parse tags from PostgreSQL format
-function parseTags(tagsData: string[] | string | null): string[] {
-  if (!tagsData) return [];
-
-  // If it's already an array (from PostgreSQL), return it
-  if (Array.isArray(tagsData)) {
-    return tagsData;
-  }
-
-  // If it's a string in PostgreSQL format, parse it
-  if (typeof tagsData === "string") {
-    // Remove curly braces and split by comma
-    return tagsData
-      .slice(1, -1)
-      .split(",")
-      .map((tag) => tag.replace(/"/g, "").trim());
-  }
-
-  return [];
-}
-
-// API Routes
-
-// Health check endpoint
-app.get("/health", (req: Request, res: Response) => {
-  res.json({ status: "OK", timestamp: new Date().toISOString() });
-});
-
-// Create a new memo
-app.post("/memo", async (req: Request, res: Response): Promise<void> => {
+export const createMemo = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const {
       sessionId,
@@ -210,10 +79,9 @@ app.post("/memo", async (req: Request, res: Response): Promise<void> => {
     console.error("Error creating memo:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+};
 
-// Get all memos
-app.get("/memos", async (req: Request, res: Response) => {
+export const getMemos = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, sessionId, limit = 50, offset = 0 } = req.query;
 
@@ -259,10 +127,12 @@ app.get("/memos", async (req: Request, res: Response) => {
     console.error("Error fetching memos:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+};
 
-// Get a specific memo by ID
-app.get("/memo/:id", async (req: Request, res: Response): Promise<void> => {
+export const getMemoById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -306,10 +176,12 @@ app.get("/memo/:id", async (req: Request, res: Response): Promise<void> => {
     console.error("Error fetching memo:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+};
 
-// Update a memo
-app.patch("/memo/:id", async (req: Request, res: Response): Promise<void> => {
+export const updateMemo = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const updates: UpdateMemoRequest = req.body;
@@ -415,10 +287,12 @@ app.patch("/memo/:id", async (req: Request, res: Response): Promise<void> => {
     console.error("Error updating memo:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+};
 
-// Delete a memo
-app.delete("/memo/:id", async (req: Request, res: Response): Promise<void> => {
+export const deleteMemo = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -440,95 +314,4 @@ app.delete("/memo/:id", async (req: Request, res: Response): Promise<void> => {
     console.error("Error deleting memo:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
-
-// Search memos using hybrid search
-app.post("/search", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { query, userId, sessionId, limit = 10 }: SearchRequest = req.body;
-
-    if (!query) {
-      res.status(400).json({ error: "Search query is required" });
-      return;
-    }
-
-    // Generate embedding for search query
-    const queryEmbedding = await generateEmbedding(query);
-
-    // Build search query with hybrid search (keyword + semantic)
-    let searchQuery = `
-      SELECT 
-        id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at,
-        (
-          CASE 
-            WHEN content ILIKE $1 THEN 1.0
-            WHEN summary ILIKE $1 THEN 0.8
-            ELSE 0.0
-          END
-        ) as keyword_score,
-        (1 - (embedding <=> $2)) as semantic_score,
-        (
-          CASE 
-            WHEN content ILIKE $1 THEN 1.0
-            WHEN summary ILIKE $1 THEN 0.8
-            ELSE 0.0
-          END
-        ) * 0.3 + (1 - (embedding <=> $2)) * 0.7 as combined_score
-      FROM memos
-      WHERE 1=1
-    `;
-
-    const searchParams: any[] = [`%${query}%`, JSON.stringify(queryEmbedding)];
-    let paramIndex = 3;
-
-    if (userId) {
-      searchQuery += ` AND user_id = $${paramIndex++}`;
-      searchParams.push(userId);
-    }
-
-    if (sessionId) {
-      searchQuery += ` AND session_id = $${paramIndex++}`;
-      searchParams.push(sessionId);
-    }
-
-    searchQuery += ` ORDER BY combined_score DESC LIMIT $${paramIndex}`;
-    searchParams.push(Number(limit));
-
-    const result = await pool.query(searchQuery, searchParams);
-
-    const memos: Memo[] = result.rows.map((row) => ({
-      id: row.id,
-      sessionId: row.session_id,
-      userId: row.user_id,
-      content: row.content,
-      summary: row.summary,
-      authorRole: row.author_role,
-      importance: row.importance,
-      accessCount: row.access_count,
-      tags: parseTags(row.tags),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
-
-    res.json(memos);
-  } catch (error) {
-    console.error("Error searching memos:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  pool.end(() => {
-    console.log("Database connection closed");
-    process.exit(0);
-  });
-});
-
-export default app;
+};
