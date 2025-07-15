@@ -100,8 +100,8 @@ src/
 
 ```bash
 cd apps/backend
-npm install
-npm run dev  # Development server with auto-reload
+pnpm install
+pnpm run dev  # Development server with auto-reload
 ```
 
 ### Environment Variables
