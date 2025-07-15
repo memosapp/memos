@@ -16,16 +16,15 @@ const getServer = () => {
     { capabilities: { logging: {} } }
   );
 
-  // Register a tool specifically for testing resumability
   server.tool(
-    "start-notification-stream",
-    "Starts sending periodic notifications for testing resumability",
+    "memorize",
+    "Memorize a list of items",
     {
-      interval: z
+      content: z
         .number()
         .describe("Interval in milliseconds between notifications")
         .default(100),
-      count: z
+      metadata: z
         .number()
         .describe("Number of notifications to send (0 for 100)")
         .default(10),
@@ -60,6 +59,29 @@ const getServer = () => {
           {
             type: "text",
             text: `Started sending periodic notifications every ${interval}ms`,
+          },
+        ],
+      };
+    }
+  );
+
+  // Register a tool specifically for testing resumability
+  server.tool(
+    "find-memories",
+    "Find memories",
+    {
+      keywords: z.string().describe("Keywords to search for").default(""),
+      tags: z.string().describe("Tags to search for").default(""),
+    },
+    async (
+      { keywords, tags },
+      { sendNotification }
+    ): Promise<CallToolResult> => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Started sending periodic notifications every ${keywords}ms`,
           },
         ],
       };
