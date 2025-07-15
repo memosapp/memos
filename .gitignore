@@ -1,0 +1,58 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Dependencies
+# Do not commit node_modules directories
+/node_modules
+**/node_modules
+
+# Build output
+# Ignore build folders from individual packages
+/dist
+**/dist
+.next/
+.svelte-kit/
+.output/
+build/
+
+# Logs
+# Ignore log files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+# Ignore environment variables, they are secret
+.env
+.env.local
+.env.*.local
+
+# IDE & Editor directories
+# Ignore editor and IDE specific files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System files
+# Ignore OS-generated files
+.DS_Store
+Thumbs.db
+
+# Turborepo (a common tool used with pnpm monorepos)
+# Ignore Turborepo cache
+.turbo
