@@ -10,7 +10,7 @@ export default function DashboardPage() {
       <div className="container">
         <div className="w-full mx-auto space-y-6">
           <div className="animate-fade-slide-down">
-            <h1 className="text-3xl font-bold mb-2">OpenMemory Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-2">Memos Dashboard</h1>
             <p className="text-zinc-400 mb-6">
               Manage your memories and explore your conversation history
             </p>

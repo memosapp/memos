@@ -17,7 +17,7 @@ export const constants = {
     iconImage: "/images/claude.webp",
   },
   openmemory: {
-    name: "OpenMemory",
+    name: "Memos",
     icon: <Icon source="/images/open-memory.svg" />,
     iconImage: "/images/open-memory.svg",
   },

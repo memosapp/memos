@@ -19,7 +19,7 @@ export default function SettingsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">Settings</h1>
           <p className="text-zinc-400 mt-2">
-            Manage your OpenMemory preferences and account settings
+            Manage your Memos preferences and account settings
           </p>
         </div>
 
@@ -51,9 +51,9 @@ export default function SettingsPage() {
 
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white">About OpenMemory</CardTitle>
+              <CardTitle className="text-white">About Memos</CardTitle>
               <CardDescription className="text-zinc-400">
-                Information about this OpenMemory instance
+                Information about this Memos instance
               </CardDescription>
             </CardHeader>
             <CardContent>
