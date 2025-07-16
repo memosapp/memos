@@ -112,31 +112,6 @@ export function CreateMemoryDialog({
   };
 
   // AI assistance handlers
-  const handleEnhanceContent = async () => {
-    if (!formData.content.trim()) {
-      toast.error("Please enter some content first");
-      return;
-    }
-
-    setAiLoading((prev) => ({ ...prev, enhanceContent: true }));
-    try {
-      const enhancedContent = await aiAssistance.enhanceContent(
-        formData.content
-      );
-      setFormData((prev) => ({
-        ...prev,
-        content: enhancedContent,
-        appName: "Gemini",
-      }));
-      toast.success("Content enhanced successfully!");
-    } catch (error) {
-      console.error("Error enhancing content:", error);
-      toast.error("Failed to enhance content");
-    } finally {
-      setAiLoading((prev) => ({ ...prev, enhanceContent: false }));
-    }
-  };
-
   const handleGenerateSummary = async () => {
     if (!formData.content.trim()) {
       toast.error("Please enter some content first");
@@ -177,8 +152,22 @@ export function CreateMemoryDialog({
   };
 
   const handleGenerateContent = async () => {
-    const prompt =
-      "Write a helpful memo about productivity tips for developers";
+    const currentContent = formData.content.trim();
+
+    let prompt: string;
+
+    if (currentContent) {
+      // If user has provided content, enhance it with context and clarity
+      prompt = `Please enhance and expand the following content by adding context, improving clarity, and enriching details while maintaining the original intent. Make it more comprehensive and well-structured:
+
+"${currentContent}"
+
+Please provide an enhanced version that is more detailed, clear, and informative while staying true to the original message.`;
+    } else {
+      // If no content provided, use default prompt
+      prompt =
+        "Write a helpful memo about productivity tips for developers. Include practical advice, best practices, and actionable insights that can improve daily workflow and efficiency.";
+    }
 
     setAiLoading((prev) => ({ ...prev, generateContent: true }));
     try {
@@ -188,10 +177,18 @@ export function CreateMemoryDialog({
         content: generatedContent,
         appName: "Gemini",
       }));
-      toast.success("Content generated successfully!");
+      toast.success(
+        currentContent
+          ? "Content enhanced successfully!"
+          : "Content generated successfully!"
+      );
     } catch (error) {
       console.error("Error generating content:", error);
-      toast.error("Failed to generate content");
+      toast.error(
+        currentContent
+          ? "Failed to enhance content"
+          : "Failed to generate content"
+      );
     } finally {
       setAiLoading((prev) => ({ ...prev, generateContent: false }));
     }
@@ -269,30 +266,18 @@ export function CreateMemoryDialog({
                   onClick={handleGenerateContent}
                   disabled={aiLoading.generateContent}
                   className="text-xs text-zinc-400 hover:text-white border-zinc-600"
+                  title={
+                    formData.content.trim()
+                      ? "Enhance existing content with more context and clarity"
+                      : "Generate new content from scratch"
+                  }
                 >
                   {aiLoading.generateContent ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Wand2 className="h-3 w-3" />
                   )}
-                  Generate
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEnhanceContent}
-                  disabled={
-                    aiLoading.enhanceContent || !formData.content.trim()
-                  }
-                  className="text-xs text-zinc-400 hover:text-white border-zinc-600"
-                >
-                  {aiLoading.enhanceContent ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
-                  Enhance
+                  {formData.content.trim() ? "Enhance" : "Generate"}
                 </Button>
               </div>
             </div>

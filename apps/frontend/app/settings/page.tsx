@@ -693,7 +693,7 @@ export default function SettingsPage() {
                       User ID
                     </label>
                     <div className="flex items-center gap-2 mt-1">
-                      <code className="text-sm bg-zinc-800 px-2 py-1 rounded text-zinc-300 font-mono">
+                      <code className="text-sm  px-2 py-1 rounded text-zinc-300 font-mono">
                         {user.id}
                       </code>
                       <Button
