@@ -24,8 +24,8 @@ export const createMemo = async (
       tags,
     }: CreateMemoRequest = req.body;
 
-    // Validate required fields
-    if (!sessionId || !userId || !content || !authorRole) {
+    // Validate required fields (sessionId is now optional)
+    if (!userId || !content || !authorRole) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
@@ -47,7 +47,7 @@ export const createMemo = async (
     `;
 
     const values = [
-      sessionId,
+      sessionId || null, // Allow null for optional sessionId
       userId,
       content,
       summary || null,

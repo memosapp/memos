@@ -10,7 +10,7 @@ CREATE TYPE author_role_enum AS ENUM ('user', 'agent', 'system');
 -- Create the main table for memos
 CREATE TABLE memos (
     id SERIAL PRIMARY KEY,
-    session_id TEXT NOT NULL,
+    session_id TEXT, -- Made nullable since not all agents can supply it
     user_id TEXT NOT NULL,
     content TEXT NOT NULL,
     summary TEXT,
@@ -24,7 +24,7 @@ CREATE TABLE memos (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_memos_session_id ON memos(session_id);
+CREATE INDEX idx_memos_session_id ON memos(session_id) WHERE session_id IS NOT NULL;
 CREATE INDEX idx_memos_user_id ON memos(user_id);
 CREATE INDEX idx_memos_author_role ON memos(author_role);
 CREATE INDEX idx_memos_created_at ON memos(created_at);
@@ -86,3 +86,9 @@ ORDER BY updated_at DESC;
 -- FROM memos
 -- ORDER BY distance
 -- LIMIT 10; 
+
+-- Migration script to update existing database
+-- If you have an existing database, run this to make session_id nullable:
+-- ALTER TABLE memos ALTER COLUMN session_id DROP NOT NULL;
+-- DROP INDEX IF EXISTS idx_memos_session_id;
+-- CREATE INDEX idx_memos_session_id ON memos(session_id) WHERE session_id IS NOT NULL; 

@@ -6,7 +6,7 @@ export enum AuthorRole {
 
 export interface Memo {
   id: number;
-  sessionId: string;
+  sessionId?: string;
   userId: string;
   content: string;
   summary?: string;
@@ -19,7 +19,7 @@ export interface Memo {
 }
 
 export interface CreateMemoRequest {
-  sessionId: string;
+  sessionId?: string;
   userId: string;
   content: string;
   summary?: string;
@@ -43,4 +43,15 @@ export interface SearchRequest {
   userId?: string;
   sessionId?: string;
   limit?: number;
+  // Enhanced search parameters
+  tags?: string[];
+  authorRole?: AuthorRole;
+  minImportance?: number;
+  maxImportance?: number;
+  sortBy?: "relevance" | "importance" | "recency" | "popularity";
+  includePopular?: boolean;
+  dateRange?: {
+    startDate?: string;
+    endDate?: string;
+  };
 }

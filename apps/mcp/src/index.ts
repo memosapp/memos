@@ -6,85 +6,346 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import cors from "cors";
 
+// Backend API base URL
+const BACKEND_API_URL = "http://localhost:3000";
+
+// Types for API requests
+enum AuthorRole {
+  USER = "user",
+  AGENT = "agent",
+  SYSTEM = "system",
+}
+
+interface CreateMemoRequest {
+  sessionId?: string;
+  userId: string;
+  content: string;
+  summary?: string;
+  authorRole: AuthorRole;
+  importance?: number;
+  tags?: string[];
+}
+
+interface SearchRequest {
+  query: string;
+  userId?: string;
+  sessionId?: string;
+  limit?: number;
+  // Enhanced search parameters
+  tags?: string[];
+  authorRole?: AuthorRole;
+  minImportance?: number;
+  maxImportance?: number;
+  sortBy?: "relevance" | "importance" | "recency" | "popularity";
+  includePopular?: boolean;
+  dateRange?: {
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
 const getServer = () => {
   // Create an MCP server with implementation details
   const server = new McpServer(
     {
-      name: "stateless-streamable-http-server",
+      name: "memos-mcp-server",
       version: "1.0.0",
     },
     { capabilities: { logging: {} } }
   );
 
+  // Tool for creating memos
   server.tool(
     "memorize",
-    "Memorize a list of items",
+    "Create a new memo in the system",
     {
-      content: z
+      sessionId: z
+        .string()
+        .optional()
+        .describe("Optional session ID for the memo"),
+      userId: z.string().describe("User ID who created the memo"),
+      content: z.string().describe("The main content of the memo"),
+      summary: z.string().optional().describe("Optional summary of the memo"),
+      authorRole: z
+        .enum(["user", "agent", "system"])
+        .describe("Role of the author")
+        .default("user"),
+      importance: z
         .number()
-        .describe("Interval in milliseconds between notifications")
-        .default(100),
-      metadata: z
-        .number()
-        .describe("Number of notifications to send (0 for 100)")
-        .default(10),
+        .min(0)
+        .max(1)
+        .optional()
+        .describe("Importance score between 0 and 1")
+        .default(1.0),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe("Optional tags for the memo"),
     },
-    async (
-      { interval, count },
-      { sendNotification }
-    ): Promise<CallToolResult> => {
-      const sleep = (ms: number) =>
-        new Promise((resolve) => setTimeout(resolve, ms));
-      let counter = 0;
+    async ({
+      sessionId,
+      userId,
+      content,
+      summary,
+      authorRole,
+      importance,
+      tags,
+    }): Promise<CallToolResult> => {
+      try {
+        const memoData: CreateMemoRequest = {
+          sessionId,
+          userId,
+          content,
+          summary,
+          authorRole: authorRole as AuthorRole,
+          importance,
+          tags,
+        };
 
-      while (count === 0 || counter < count) {
-        counter++;
-        try {
-          await sendNotification({
-            method: "notifications/message",
-            params: {
-              level: "info",
-              data: `Periodic notification #${counter} at ${new Date().toISOString()}`,
-            },
-          });
-        } catch (error) {
-          console.error("Error sending notification:", error);
-        }
-        // Wait for the specified interval
-        await sleep(interval);
-      }
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Started sending periodic notifications every ${interval}ms`,
+        const response = await fetch(`${BACKEND_API_URL}/memo`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ],
-      };
+          body: JSON.stringify(memoData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            `Failed to create memo: ${error.error || response.statusText}`
+          );
+        }
+
+        const createdMemo = await response.json();
+
+        const sessionInfo = createdMemo.sessionId
+          ? `Session: ${createdMemo.sessionId}\n`
+          : "";
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully created memo with ID: ${
+                createdMemo.id
+              }\n\n${sessionInfo}Content: ${createdMemo.content}\nAuthor: ${
+                createdMemo.authorRole
+              }\nImportance: ${createdMemo.importance}\nTags: ${
+                createdMemo.tags?.join(", ") || "None"
+              }\nCreated: ${new Date(createdMemo.createdAt).toLocaleString()}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error creating memo: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
-  // Register a tool specifically for testing resumability
+  // Tool for searching memos
   server.tool(
     "find-memories",
-    "Find memories",
+    "Search for memos based on keywords with advanced filtering and sorting options",
     {
-      keywords: z.string().describe("Keywords to search for").default(""),
-      tags: z.string().describe("Tags to search for").default(""),
+      query: z.string().describe("Search query to find relevant memos"),
+      userId: z.string().optional().describe("Filter by specific user ID"),
+      sessionId: z
+        .string()
+        .optional()
+        .describe("Filter by specific session ID"),
+      limit: z
+        .number()
+        .min(1)
+        .max(50)
+        .optional()
+        .describe("Maximum number of results to return")
+        .default(10),
+      // Enhanced search parameters
+      tags: z.array(z.string()).optional().describe("Filter by specific tags"),
+      authorRole: z
+        .enum(["user", "agent", "system"])
+        .optional()
+        .describe("Filter by author role"),
+      minImportance: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .describe("Minimum importance score"),
+      maxImportance: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .describe("Maximum importance score"),
+      sortBy: z
+        .enum(["relevance", "importance", "recency", "popularity"])
+        .optional()
+        .describe("Sort results by different criteria")
+        .default("relevance"),
+      includePopular: z
+        .boolean()
+        .optional()
+        .describe("Include popularity boost in relevance scoring")
+        .default(false),
+      dateRange: z
+        .object({
+          startDate: z
+            .string()
+            .optional()
+            .describe("Start date for filtering (YYYY-MM-DD format)"),
+          endDate: z
+            .string()
+            .optional()
+            .describe("End date for filtering (YYYY-MM-DD format)"),
+        })
+        .optional()
+        .describe("Filter by date range"),
     },
-    async (
-      { keywords, tags },
-      { sendNotification }
-    ): Promise<CallToolResult> => {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Started sending periodic notifications every ${keywords}ms`,
+    async ({
+      query,
+      userId,
+      sessionId,
+      limit,
+      tags,
+      authorRole,
+      minImportance,
+      maxImportance,
+      sortBy,
+      includePopular,
+      dateRange,
+    }): Promise<CallToolResult> => {
+      try {
+        const searchData: SearchRequest = {
+          query,
+          userId,
+          sessionId,
+          limit,
+          tags,
+          authorRole: authorRole as AuthorRole,
+          minImportance,
+          maxImportance,
+          sortBy,
+          includePopular,
+          dateRange,
+        };
+
+        const response = await fetch(`${BACKEND_API_URL}/search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ],
-      };
+          body: JSON.stringify(searchData),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            `Failed to search memos: ${error.error || response.statusText}`
+          );
+        }
+
+        const memos = await response.json();
+
+        if (memos.length === 0) {
+          const filterSummary = [];
+          if (tags && tags.length > 0)
+            filterSummary.push(`tags: ${tags.join(", ")}`);
+          if (authorRole) filterSummary.push(`author: ${authorRole}`);
+          if (minImportance !== undefined || maxImportance !== undefined) {
+            filterSummary.push(
+              `importance: ${minImportance || 0}-${maxImportance || 1}`
+            );
+          }
+          if (dateRange?.startDate || dateRange?.endDate) {
+            filterSummary.push(
+              `date: ${dateRange.startDate || "start"} to ${
+                dateRange.endDate || "end"
+              }`
+            );
+          }
+
+          const filterText =
+            filterSummary.length > 0
+              ? ` with filters: ${filterSummary.join(", ")}`
+              : "";
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No memos found for query: "${query}"${filterText}`,
+              },
+            ],
+          };
+        }
+
+        const sortLabel =
+          sortBy === "relevance"
+            ? "relevance"
+            : sortBy === "importance"
+            ? "importance"
+            : sortBy === "recency"
+            ? "most recent"
+            : "popularity";
+
+        const results = memos
+          .map((memo: any, index: number) => {
+            const tagText =
+              memo.tags && memo.tags.length > 0 ? memo.tags.join(", ") : "None";
+            const summaryText = memo.summary
+              ? `\n   Summary: ${memo.summary}`
+              : "";
+
+            return (
+              `${index + 1}. ID: ${memo.id} | Author: ${
+                memo.authorRole
+              } | Importance: ${memo.importance || 0.5} | Access: ${
+                memo.accessCount || 0
+              }\n` +
+              `   Content: ${memo.content}${summaryText}\n` +
+              `   Tags: ${tagText}\n` +
+              `   Created: ${new Date(
+                memo.createdAt
+              ).toLocaleString()} | Updated: ${new Date(
+                memo.updatedAt
+              ).toLocaleString()}\n`
+            );
+          })
+          .join("\n");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Found ${memos.length} memo(s) for query: "${query}" (sorted by ${sortLabel})\n\n${results}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error searching memos: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            },
+          ],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -160,7 +421,7 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 });
 
 // Start the server
-const PORT = 3000;
+const PORT = 3001; // Changed from 3000 to avoid conflicts with backend
 app.listen(PORT, (error) => {
   if (error) {
     console.error("Failed to start server:", error);

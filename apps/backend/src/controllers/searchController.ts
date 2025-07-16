@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { pool } from "../config/database";
 import { generateEmbedding } from "../services/embeddingService";
-import { parseTags } from "../utils/tagUtils";
+import { parseTags, formatTags } from "../utils/tagUtils";
 import { Memo, SearchRequest } from "../types";
 
 export const searchMemos = async (
@@ -9,7 +9,19 @@ export const searchMemos = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { query, userId, sessionId, limit = 10 }: SearchRequest = req.body;
+    const {
+      query,
+      userId,
+      sessionId,
+      limit = 10,
+      tags,
+      authorRole,
+      minImportance,
+      maxImportance,
+      sortBy = "relevance",
+      includePopular = false,
+      dateRange,
+    }: SearchRequest = req.body;
 
     if (!query) {
       res.status(400).json({ error: "Search query is required" });
@@ -19,10 +31,20 @@ export const searchMemos = async (
     // Generate embedding for search query
     const queryEmbedding = await generateEmbedding(query);
 
-    // Build search query with hybrid search (keyword + semantic)
+    // Build tag matching conditions
+    let tagConditions = "";
+    if (tags && tags.length > 0) {
+      const tagMatches = tags
+        .map((_, i) => `tags ILIKE $${3 + i}`)
+        .join(" OR ");
+      tagConditions = `WHEN ${tagMatches} THEN 0.9`;
+    }
+
+    // Build enhanced search query with metadata-based scoring
     let searchQuery = `
       SELECT 
         id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at,
+        -- Keyword scoring
         (
           CASE 
             WHEN content ILIKE $1 THEN 1.0
@@ -30,14 +52,48 @@ export const searchMemos = async (
             ELSE 0.0
           END
         ) as keyword_score,
+        -- Semantic scoring
         (1 - (embedding <=> $2)) as semantic_score,
+        -- Tag scoring
         (
           CASE 
-            WHEN content ILIKE $1 THEN 1.0
-            WHEN summary ILIKE $1 THEN 0.8
+            WHEN tags IS NOT NULL AND tags != '' THEN
+              CASE 
+                WHEN tags ILIKE $1 THEN 1.0
+                ${tagConditions}
+                ELSE 0.0
+              END
             ELSE 0.0
           END
-        ) * 0.3 + (1 - (embedding <=> $2)) * 0.7 as combined_score
+        ) as tag_score,
+        -- Author role scoring
+        (
+          CASE 
+            WHEN author_role = 'system' THEN 0.9
+            WHEN author_role = 'agent' THEN 0.8
+            WHEN author_role = 'user' THEN 0.7
+            ELSE 0.5
+          END
+        ) as author_score,
+        -- Importance scoring (normalized)
+        COALESCE(importance, 0.5) as importance_score,
+        -- Popularity scoring (normalized access count)
+        (
+          CASE 
+            WHEN access_count > 0 THEN LEAST(1.0, LOG(access_count + 1) / 5.0)
+            ELSE 0.1
+          END
+        ) as popularity_score,
+        -- Recency scoring (more recent = higher score)
+        (
+          CASE 
+            WHEN updated_at > NOW() - INTERVAL '1 day' THEN 1.0
+            WHEN updated_at > NOW() - INTERVAL '7 days' THEN 0.8
+            WHEN updated_at > NOW() - INTERVAL '30 days' THEN 0.6
+            WHEN updated_at > NOW() - INTERVAL '90 days' THEN 0.4
+            ELSE 0.2
+          END
+        ) as recency_score
       FROM memos
       WHERE 1=1
     `;
@@ -45,6 +101,15 @@ export const searchMemos = async (
     const searchParams: any[] = [`%${query}%`, JSON.stringify(queryEmbedding)];
     let paramIndex = 3;
 
+    // Add tag parameters
+    if (tags && tags.length > 0) {
+      tags.forEach((tag) => {
+        searchParams.push(`%${tag}%`);
+        paramIndex++;
+      });
+    }
+
+    // Add filters
     if (userId) {
       searchQuery += ` AND user_id = $${paramIndex++}`;
       searchParams.push(userId);
@@ -55,7 +120,65 @@ export const searchMemos = async (
       searchParams.push(sessionId);
     }
 
-    searchQuery += ` ORDER BY combined_score DESC LIMIT $${paramIndex}`;
+    if (authorRole) {
+      searchQuery += ` AND author_role = $${paramIndex++}`;
+      searchParams.push(authorRole);
+    }
+
+    if (minImportance !== undefined) {
+      searchQuery += ` AND importance >= $${paramIndex++}`;
+      searchParams.push(minImportance);
+    }
+
+    if (maxImportance !== undefined) {
+      searchQuery += ` AND importance <= $${paramIndex++}`;
+      searchParams.push(maxImportance);
+    }
+
+    if (dateRange?.startDate) {
+      searchQuery += ` AND created_at >= $${paramIndex++}`;
+      searchParams.push(dateRange.startDate);
+    }
+
+    if (dateRange?.endDate) {
+      searchQuery += ` AND created_at <= $${paramIndex++}`;
+      searchParams.push(dateRange.endDate);
+    }
+
+    // Add comprehensive scoring and sorting
+    switch (sortBy) {
+      case "relevance":
+        const popularityWeight = includePopular
+          ? "popularity_score * 0.05 +"
+          : "";
+        searchQuery += ` ORDER BY (
+          keyword_score * 0.25 + 
+          semantic_score * 0.35 + 
+          tag_score * 0.15 + 
+          importance_score * 0.1 + 
+          ${popularityWeight}
+          author_score * 0.05 + 
+          recency_score * 0.05
+        ) DESC`;
+        break;
+
+      case "importance":
+        searchQuery += " ORDER BY importance DESC, updated_at DESC";
+        break;
+
+      case "recency":
+        searchQuery += " ORDER BY updated_at DESC";
+        break;
+
+      case "popularity":
+        searchQuery += " ORDER BY access_count DESC, updated_at DESC";
+        break;
+
+      default:
+        searchQuery += " ORDER BY updated_at DESC";
+    }
+
+    searchQuery += ` LIMIT $${paramIndex}`;
     searchParams.push(Number(limit));
 
     const result = await pool.query(searchQuery, searchParams);
