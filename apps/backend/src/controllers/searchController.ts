@@ -3,6 +3,11 @@ import { pool } from "../config/database";
 import { generateEmbedding } from "../services/embeddingService";
 import { parseTags, formatTags } from "../utils/tagUtils";
 import { Memo, SearchRequest } from "../types";
+import {
+  generateCacheKey,
+  getCachedSearchResults,
+  cacheSearchResults,
+} from "../services/searchCacheService";
 
 export const searchMemos = async (
   req: Request,
@@ -35,6 +40,43 @@ export const searchMemos = async (
       return;
     }
 
+    // Validate query length for performance
+    if (query.length < 2) {
+      res
+        .status(400)
+        .json({ error: "Search query must be at least 2 characters long" });
+      return;
+    }
+
+    if (query.length > 500) {
+      res
+        .status(400)
+        .json({ error: "Search query is too long (max 500 characters)" });
+      return;
+    }
+
+    // Generate cache key for this search
+    const cacheKey = generateCacheKey(
+      userId,
+      query,
+      sessionId,
+      limit,
+      tags,
+      authorRole,
+      minImportance,
+      maxImportance,
+      sortBy,
+      includePopular
+    );
+
+    // Check cache first
+    const cachedResults = getCachedSearchResults(cacheKey);
+    if (cachedResults) {
+      console.log("Returning cached search results");
+      res.json(cachedResults);
+      return;
+    }
+
     // Generate embedding for search query
     const queryEmbedding = await generateEmbedding(query);
 
@@ -42,9 +84,11 @@ export const searchMemos = async (
     let tagConditions = "";
     if (tags && tags.length > 0) {
       const tagMatches = tags
-        .map((_, i) => `array_to_string(tags, ' ') ILIKE $${3 + i}`)
+        .map((_, i) => `array_to_string(tags, ' ') ILIKE $${4 + i}`)
         .join(" OR ");
-      tagConditions = `WHEN ${tagMatches} THEN 0.9`;
+      tagConditions = `WHEN ${tagMatches} THEN 0.2`;
+    } else {
+      tagConditions = "WHEN FALSE THEN 0.2";
     }
 
     // Build the complex search query with hybrid scoring
@@ -160,6 +204,9 @@ export const searchMemos = async (
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
+
+    // Cache the results for future use
+    cacheSearchResults(cacheKey, memos);
 
     res.json(memos);
   } catch (error) {

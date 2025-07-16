@@ -7,14 +7,15 @@ import {
   deleteMemo,
 } from "../controllers/memoController";
 import { requireAuth } from "../middleware/auth";
+import { generalRateLimit } from "../middleware/rateLimiter";
 
 const router: Router = Router();
 
-// All memo routes require authentication
-router.post("/memo", requireAuth, createMemo);
-router.get("/memos", requireAuth, getMemos);
-router.get("/memo/:id", requireAuth, getMemoById);
-router.patch("/memo/:id", requireAuth, updateMemo);
-router.delete("/memo/:id", requireAuth, deleteMemo);
+// All memo routes require authentication and rate limiting
+router.post("/memo", generalRateLimit, requireAuth, createMemo);
+router.get("/memos", generalRateLimit, requireAuth, getMemos);
+router.get("/memo/:id", generalRateLimit, requireAuth, getMemoById);
+router.patch("/memo/:id", generalRateLimit, requireAuth, updateMemo);
+router.delete("/memo/:id", generalRateLimit, requireAuth, deleteMemo);
 
 export default router;

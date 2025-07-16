@@ -7,6 +7,7 @@ import memoRouter from "./routes/memos";
 import searchRouter from "./routes/search";
 import authRouter from "./routes/auth";
 import aiRouter from "./routes/ai";
+import performanceRouter from "./routes/performance";
 
 // Create Express app
 const app: Express = express();
@@ -21,5 +22,6 @@ app.use("/", memoRouter);
 app.use("/", searchRouter);
 app.use("/auth", authRouter);
 app.use("/", aiRouter);
+app.use("/", performanceRouter);
 
 export default app;

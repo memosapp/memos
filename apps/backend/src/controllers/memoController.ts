@@ -8,6 +8,7 @@ import {
   CreateMemoRequest,
   UpdateMemoRequest,
 } from "../types";
+import { clearUserCache } from "../services/searchCacheService";
 
 export const createMemo = async (
   req: Request,
@@ -83,6 +84,9 @@ export const createMemo = async (
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+
+    // Clear user's search cache since new memo was created
+    clearUserCache(userId);
 
     res.status(201).json(memo);
   } catch (error) {
@@ -318,6 +322,9 @@ export const updateMemo = async (
       updatedAt: row.updated_at,
     };
 
+    // Clear user's search cache since memo was updated
+    clearUserCache(userId);
+
     res.json(memo);
   } catch (error) {
     console.error("Error updating memo:", error);
@@ -354,6 +361,9 @@ export const deleteMemo = async (
       res.status(404).json({ error: "Memo not found" });
       return;
     }
+
+    // Clear user's search cache since memo was deleted
+    clearUserCache(userId);
 
     res.json({ message: "Memo deleted successfully" });
   } catch (error) {
