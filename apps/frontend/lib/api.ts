@@ -68,4 +68,60 @@ apiClient.interceptors.response.use(
   }
 );
 
+// AI Assistance interface
+export interface AIAssistanceRequest {
+  type: "enhance" | "summarize" | "generateTags" | "generateContent";
+  content?: string;
+  prompt?: string;
+  context?: string;
+}
+
+export interface AIAssistanceResponse {
+  result: string;
+  suggestions?: string[];
+}
+
+// AI Assistance API methods
+export const aiAssistance = {
+  async getAssistance(
+    request: AIAssistanceRequest
+  ): Promise<AIAssistanceResponse> {
+    const response = await apiClient.post("/ai/assistance", request);
+    return response.data;
+  },
+
+  async enhanceContent(content: string): Promise<string> {
+    const response = await this.getAssistance({
+      type: "enhance",
+      content,
+    });
+    return response.result;
+  },
+
+  async summarizeContent(content: string): Promise<string> {
+    const response = await this.getAssistance({
+      type: "summarize",
+      content,
+    });
+    return response.result;
+  },
+
+  async generateTags(content: string): Promise<string[]> {
+    const response = await this.getAssistance({
+      type: "generateTags",
+      content,
+    });
+    return response.suggestions || [];
+  },
+
+  async generateContent(prompt: string, context?: string): Promise<string> {
+    const response = await this.getAssistance({
+      type: "generateContent",
+      prompt,
+      context,
+    });
+    return response.result;
+  },
+};
+
 export default apiClient;

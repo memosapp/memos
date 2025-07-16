@@ -6,6 +6,7 @@ import healthRouter from "./routes/health";
 import memoRouter from "./routes/memos";
 import searchRouter from "./routes/search";
 import authRouter from "./routes/auth";
+import aiRouter from "./routes/ai";
 
 // Create Express app
 const app: Express = express();
@@ -19,5 +20,6 @@ app.use("/", healthRouter);
 app.use("/", memoRouter);
 app.use("/", searchRouter);
 app.use("/auth", authRouter);
+app.use("/", aiRouter);
 
 export default app;

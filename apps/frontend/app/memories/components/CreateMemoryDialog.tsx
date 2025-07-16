@@ -22,11 +22,12 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, MessageSquare, Sparkles } from "lucide-react";
+import { X, Plus, MessageSquare, Sparkles, Wand2, Loader2 } from "lucide-react";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import { AuthorRole } from "@/components/types";
 import { RootState } from "@/store/store";
 import { toast } from "sonner";
+import { aiAssistance } from "@/lib/api";
 
 interface CreateMemoryDialogProps {
   trigger?: React.ReactNode;
@@ -64,6 +65,14 @@ export function CreateMemoryDialog({
 
   const [newTag, setNewTag] = useState("");
 
+  // AI assistance loading states
+  const [aiLoading, setAiLoading] = useState({
+    enhanceContent: false,
+    generateSummary: false,
+    generateTags: false,
+    generateContent: false,
+  });
+
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData((prev) => ({
@@ -98,6 +107,84 @@ export function CreateMemoryDialog({
       tags: defaultTags,
     });
     setNewTag("");
+  };
+
+  // AI assistance handlers
+  const handleEnhanceContent = async () => {
+    if (!formData.content.trim()) {
+      toast.error("Please enter some content first");
+      return;
+    }
+
+    setAiLoading((prev) => ({ ...prev, enhanceContent: true }));
+    try {
+      const enhancedContent = await aiAssistance.enhanceContent(
+        formData.content
+      );
+      setFormData((prev) => ({ ...prev, content: enhancedContent }));
+      toast.success("Content enhanced successfully!");
+    } catch (error) {
+      console.error("Error enhancing content:", error);
+      toast.error("Failed to enhance content");
+    } finally {
+      setAiLoading((prev) => ({ ...prev, enhanceContent: false }));
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!formData.content.trim()) {
+      toast.error("Please enter some content first");
+      return;
+    }
+
+    setAiLoading((prev) => ({ ...prev, generateSummary: true }));
+    try {
+      const summary = await aiAssistance.summarizeContent(formData.content);
+      setFormData((prev) => ({ ...prev, summary }));
+      toast.success("Summary generated successfully!");
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      toast.error("Failed to generate summary");
+    } finally {
+      setAiLoading((prev) => ({ ...prev, generateSummary: false }));
+    }
+  };
+
+  const handleGenerateTags = async () => {
+    if (!formData.content.trim()) {
+      toast.error("Please enter some content first");
+      return;
+    }
+
+    setAiLoading((prev) => ({ ...prev, generateTags: true }));
+    try {
+      const suggestedTags = await aiAssistance.generateTags(formData.content);
+      const uniqueTags = [...new Set([...formData.tags, ...suggestedTags])];
+      setFormData((prev) => ({ ...prev, tags: uniqueTags }));
+      toast.success("Tags generated successfully!");
+    } catch (error) {
+      console.error("Error generating tags:", error);
+      toast.error("Failed to generate tags");
+    } finally {
+      setAiLoading((prev) => ({ ...prev, generateTags: false }));
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    const prompt =
+      "Write a helpful memo about productivity tips for developers";
+
+    setAiLoading((prev) => ({ ...prev, generateContent: true }));
+    try {
+      const generatedContent = await aiAssistance.generateContent(prompt);
+      setFormData((prev) => ({ ...prev, content: generatedContent }));
+      toast.success("Content generated successfully!");
+    } catch (error) {
+      console.error("Error generating content:", error);
+      toast.error("Failed to generate content");
+    } finally {
+      setAiLoading((prev) => ({ ...prev, generateContent: false }));
+    }
   };
 
   const handleCreateMemory = async () => {
@@ -155,13 +242,49 @@ export function CreateMemoryDialog({
         <div className="space-y-6">
           {/* Content */}
           <div className="space-y-2">
-            <Label
-              htmlFor="content"
-              className="text-zinc-300 flex items-center gap-2"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Content *
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="content"
+                className="text-zinc-300 flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Content *
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateContent}
+                  disabled={aiLoading.generateContent}
+                  className="text-xs text-zinc-400 hover:text-white border-zinc-600"
+                >
+                  {aiLoading.generateContent ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3 w-3" />
+                  )}
+                  Generate
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnhanceContent}
+                  disabled={
+                    aiLoading.enhanceContent || !formData.content.trim()
+                  }
+                  className="text-xs text-zinc-400 hover:text-white border-zinc-600"
+                >
+                  {aiLoading.enhanceContent ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  Enhance
+                </Button>
+              </div>
+            </div>
             <Textarea
               id="content"
               placeholder="Enter your memory content..."
@@ -176,13 +299,30 @@ export function CreateMemoryDialog({
 
           {/* Summary */}
           <div className="space-y-2">
-            <Label
-              htmlFor="summary"
-              className="text-zinc-300 flex items-center gap-2"
-            >
-              <Sparkles className="h-4 w-4" />
-              Summary
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="summary"
+                className="text-zinc-300 flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Summary
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateSummary}
+                disabled={aiLoading.generateSummary || !formData.content.trim()}
+                className="text-xs text-zinc-400 hover:text-white border-zinc-600"
+              >
+                {aiLoading.generateSummary ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3 w-3" />
+                )}
+                Generate
+              </Button>
+            </div>
             <Input
               id="summary"
               placeholder="Optional summary..."
@@ -249,7 +389,24 @@ export function CreateMemoryDialog({
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label className="text-zinc-300">Tags</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-zinc-300">Tags</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateTags}
+                disabled={aiLoading.generateTags || !formData.content.trim()}
+                className="text-xs text-zinc-400 hover:text-white border-zinc-600"
+              >
+                {aiLoading.generateTags ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3 w-3" />
+                )}
+                Generate
+              </Button>
+            </div>
             <div className="flex flex-wrap gap-2 mb-2">
               {formData.tags.map((tag, index) => (
                 <Badge
