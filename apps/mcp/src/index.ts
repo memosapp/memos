@@ -18,7 +18,7 @@ enum AuthorRole {
 
 interface CreateMemoRequest {
   sessionId?: string;
-  userId: string;
+  userId?: string;
   content: string;
   summary?: string;
   authorRole: AuthorRole;
@@ -57,30 +57,84 @@ const getServer = () => {
   // Tool for creating memos
   server.tool(
     "memorize",
-    "Create a new memo in the system",
+    `Create and store a new memo in the Memos system with semantic embedding support.
+
+This tool allows you to capture and persist important information, conversations, insights, or any textual content that should be remembered for future reference. Each memo is automatically processed with semantic embeddings for intelligent search and retrieval.
+
+## When to Use:
+- Store important conversation snippets or insights
+- Save user preferences or settings
+- Capture key decisions or action items
+- Record contextual information for future sessions
+- Archive meaningful interactions or learnings
+
+## Key Features:
+- **Semantic Search**: Content is automatically embedded for intelligent retrieval
+- **Flexible Tagging**: Add tags for easy categorization and filtering
+- **Importance Scoring**: Rate content importance (0.0-1.0) for prioritization
+- **Multi-Author Support**: Track whether content comes from user, agent, or system
+- **Session Tracking**: Optional session linking for conversation context
+- **Rich Metadata**: Automatic timestamps and access tracking
+
+## Usage Patterns:
+- **High Importance (0.8-1.0)**: Critical decisions, key insights, user preferences
+- **Medium Importance (0.5-0.7)**: Useful information, context, moderate insights
+- **Low Importance (0.1-0.4)**: Casual mentions, temporary notes, minor details
+
+## Response Format:
+Returns confirmation with memo ID, content summary, metadata, and timestamp for verification.
+
+## Best Practices:
+- Use descriptive summaries to improve searchability
+- Tag content by topic/category for better organization
+- Set appropriate importance levels for prioritization
+- Include session context when relevant for conversation flow`,
     {
       sessionId: z
         .string()
         .optional()
-        .describe("Optional session ID for the memo"),
-      userId: z.string().describe("User ID who created the memo"),
-      content: z.string().describe("The main content of the memo"),
-      summary: z.string().optional().describe("Optional summary of the memo"),
+        .describe(
+          "Optional session identifier to link this memo to a specific conversation or interaction context. Use consistent session IDs to group related memos together for better context tracking."
+        ),
+      // TODO: Remove userId parameter - should come from auth middleware
+      userId: z
+        .string()
+        .optional()
+        .describe(
+          "Unique identifier for the user who created or is associated with this memo. Essential for multi-user systems and personalized memory retrieval."
+        ),
+      content: z
+        .string()
+        .describe(
+          "The main textual content of the memo. This is the primary information that will be stored, embedded, and searched. Should be clear, concise, and contain the key information to be remembered."
+        ),
+      summary: z
+        .string()
+        .optional()
+        .describe(
+          "Optional brief summary or title for the memo. Helps with quick identification and improves searchability. If not provided, the system will use the content for search purposes."
+        ),
       authorRole: z
         .enum(["user", "agent", "system"])
-        .describe("Role of the author")
+        .describe(
+          "Specifies who created this memo: 'user' for human-generated content, 'agent' for AI-generated insights, 'system' for automated entries. Affects search ranking and filtering."
+        )
         .default("user"),
       importance: z
         .number()
         .min(0)
         .max(1)
         .optional()
-        .describe("Importance score between 0 and 1")
+        .describe(
+          "Importance score from 0.0 (low) to 1.0 (high). Higher values get prioritized in search results. Use 0.8-1.0 for critical info, 0.5-0.7 for useful content, 0.1-0.4 for minor details."
+        )
         .default(1.0),
       tags: z
         .array(z.string())
         .optional()
-        .describe("Optional tags for the memo"),
+        .describe(
+          "Array of descriptive tags for categorization and filtering. Use consistent, lowercase tags like ['user-preference', 'meeting-notes', 'bug-report'] for better organization and retrieval."
+        ),
     },
     async ({
       sessionId,
@@ -156,62 +210,144 @@ const getServer = () => {
   // Tool for searching memos
   server.tool(
     "find-memories",
-    "Search for memos based on keywords with advanced filtering and sorting options",
+    `Search and retrieve memos using advanced semantic search with comprehensive filtering and sorting capabilities.
+
+This tool provides intelligent search across all stored memos using a hybrid approach that combines:
+- **Keyword Matching (25%)**: Direct text pattern matching in content and summaries
+- **Semantic Search (35%)**: AI-powered understanding of meaning and context
+- **Tag Matching (15%)**: Exact tag-based filtering and scoring
+- **Metadata Scoring (25%)**: Importance, authorship, popularity, and recency factors
+
+## When to Use:
+- Find relevant information from past conversations
+- Retrieve specific topics or themes
+- Locate memos by author, importance, or time period
+- Discover related content through semantic similarity
+- Filter memories by tags, roles, or other criteria
+
+## Search Strategy:
+The search combines multiple signals to rank results:
+1. **Relevance (default)**: Balanced mix of all scoring factors
+2. **Importance**: Prioritizes high-importance memos first
+3. **Recency**: Shows most recent memos first
+4. **Popularity**: Ranks by access count and engagement
+
+## Advanced Filtering:
+- **Tags**: Filter by specific topics or categories
+- **Author Role**: Separate user, agent, or system content
+- **Importance Range**: Find high/low priority items
+- **Date Range**: Time-based filtering for temporal context
+- **Popularity Boost**: Emphasize frequently accessed content
+
+## Response Format:
+Returns ranked list with:
+- Memo ID, content preview, and summary
+- Author, importance score, and access count
+- Tags and creation/update timestamps
+- Relevance scoring explanation
+
+## Search Examples:
+- \`"user preferences"\` - Find user settings and choices
+- \`"error handling"\` + tags: ["coding", "bugs"] - Technical issues
+- \`"meeting notes"\` + recency sort - Recent discussions
+- \`importance: 0.8-1.0\` + "decisions" - Critical choices
+
+## Best Practices:
+- Use specific keywords for better precision
+- Combine text search with filters for targeted results
+- Try different sort orders to find what you need
+- Use tags to narrow down broad searches
+- Consider author roles to filter by source type`,
     {
-      query: z.string().describe("Search query to find relevant memos"),
-      userId: z.string().optional().describe("Filter by specific user ID"),
+      query: z
+        .string()
+        .describe(
+          "Natural language search query to find relevant memos. Can include keywords, phrases, or concepts. The system will match against content, summaries, and tags using both exact matching and semantic understanding."
+        ),
+      // TODO: Remove userId parameter - should come from auth middleware
+      userId: z
+        .string()
+        .optional()
+        .describe(
+          "Filter results to show only memos created by or associated with a specific user ID. Essential for multi-user environments to maintain user privacy and personalized results."
+        ),
       sessionId: z
         .string()
         .optional()
-        .describe("Filter by specific session ID"),
+        .describe(
+          "Filter results to show only memos from a specific session or conversation context. Useful for finding related memories from a particular interaction or time period."
+        ),
       limit: z
         .number()
         .min(1)
         .max(50)
         .optional()
-        .describe("Maximum number of results to return")
+        .describe(
+          "Maximum number of search results to return. Lower values (5-10) for quick overviews, higher values (20-50) for comprehensive searches. Default is 10 for optimal performance."
+        )
         .default(10),
       // Enhanced search parameters
-      tags: z.array(z.string()).optional().describe("Filter by specific tags"),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Filter results to include only memos with specific tags. Use an array of tag names to find memos that match any of the specified tags. Example: ['user-preference', 'important']"
+        ),
       authorRole: z
         .enum(["user", "agent", "system"])
         .optional()
-        .describe("Filter by author role"),
+        .describe(
+          "Filter results by who created the memo. 'user' for human-generated content, 'agent' for AI-generated insights, 'system' for automated entries. Helps separate different types of content."
+        ),
       minImportance: z
         .number()
         .min(0)
         .max(1)
         .optional()
-        .describe("Minimum importance score"),
+        .describe(
+          "Minimum importance score threshold (0.0-1.0). Only return memos with importance scores at or above this value. Use 0.8+ for critical information, 0.5+ for useful content."
+        ),
       maxImportance: z
         .number()
         .min(0)
         .max(1)
         .optional()
-        .describe("Maximum importance score"),
+        .describe(
+          "Maximum importance score threshold (0.0-1.0). Only return memos with importance scores at or below this value. Useful for finding lower-priority or casual content."
+        ),
       sortBy: z
         .enum(["relevance", "importance", "recency", "popularity"])
         .optional()
-        .describe("Sort results by different criteria")
+        .describe(
+          "Sort order for results: 'relevance' (default) combines all factors, 'importance' prioritizes high-value content, 'recency' shows newest first, 'popularity' ranks by access frequency."
+        )
         .default("relevance"),
       includePopular: z
         .boolean()
         .optional()
-        .describe("Include popularity boost in relevance scoring")
+        .describe(
+          "When true, adds a popularity boost to relevance scoring based on access count and engagement. Helps surface frequently referenced content even if not perfectly matching the query."
+        )
         .default(false),
       dateRange: z
         .object({
           startDate: z
             .string()
             .optional()
-            .describe("Start date for filtering (YYYY-MM-DD format)"),
+            .describe(
+              "Start date for filtering in YYYY-MM-DD format (e.g., '2024-01-01'). Only return memos created on or after this date."
+            ),
           endDate: z
             .string()
             .optional()
-            .describe("End date for filtering (YYYY-MM-DD format)"),
+            .describe(
+              "End date for filtering in YYYY-MM-DD format (e.g., '2024-12-31'). Only return memos created on or before this date."
+            ),
         })
         .optional()
-        .describe("Filter by date range"),
+        .describe(
+          "Date range filter to find memos from specific time periods. Useful for temporal searches like 'what did we discuss last week' or 'decisions made in January'."
+        ),
     },
     async ({
       query,
@@ -249,6 +385,8 @@ const getServer = () => {
           body: JSON.stringify(searchData),
         });
 
+        console.log("searchData", searchData);
+
         if (!response.ok) {
           const error = await response.json();
           throw new Error(
@@ -257,6 +395,7 @@ const getServer = () => {
         }
 
         const memos = await response.json();
+        console.log("memos", memos);
 
         if (memos.length === 0) {
           const filterSummary = [];

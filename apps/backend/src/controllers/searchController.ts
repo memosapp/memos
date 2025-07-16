@@ -11,7 +11,7 @@ export const searchMemos = async (
   try {
     const {
       query,
-      userId,
+      userId, // TODO: Get userId from auth middleware instead of request body
       sessionId,
       limit = 10,
       tags,

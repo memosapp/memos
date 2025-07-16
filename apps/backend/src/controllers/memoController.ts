@@ -16,7 +16,7 @@ export const createMemo = async (
   try {
     const {
       sessionId,
-      userId,
+      userId, // TODO: Get userId from auth middleware instead of request body
       content,
       summary,
       authorRole,
