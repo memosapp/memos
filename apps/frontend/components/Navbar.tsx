@@ -118,16 +118,6 @@ export function Navbar() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefresh}
-            className="flex items-center gap-2 border-none text-zinc-300 hover:text-white"
-          >
-            <FiRefreshCcw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <CreateMemoryDialog />
-          <Button
-            variant="outline"
-            size="sm"
             onClick={handleSignOut}
             className="flex items-center gap-2 border-none text-zinc-300 hover:text-white"
           >
