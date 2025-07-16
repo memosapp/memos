@@ -99,7 +99,7 @@ export const searchMemos = async (
         WHERE 1=1
       )
       SELECT * FROM scored_memos
-      WHERE 1=1
+      WHERE (keyword_score > 0 OR semantic_score > 0.7 OR tag_score > 0)
     `;
 
     const searchParams: any[] = [`%${query}%`, JSON.stringify(queryEmbedding)];
@@ -113,45 +113,50 @@ export const searchMemos = async (
       });
     }
 
-    // Build CTE filters
-    let cteFilters = "";
+    // Build additional filters for the outer query
+    let outerFilters = "";
     if (userId) {
-      cteFilters += ` AND user_id = $${paramIndex++}`;
+      outerFilters += ` AND user_id = $${paramIndex++}`;
       searchParams.push(userId);
     }
 
     if (sessionId) {
-      cteFilters += ` AND session_id = $${paramIndex++}`;
+      outerFilters += ` AND session_id = $${paramIndex++}`;
       searchParams.push(sessionId);
     }
 
     if (authorRole) {
-      cteFilters += ` AND author_role = $${paramIndex++}`;
+      outerFilters += ` AND author_role = $${paramIndex++}`;
       searchParams.push(authorRole);
     }
 
     if (minImportance !== undefined) {
-      cteFilters += ` AND importance >= $${paramIndex++}`;
+      outerFilters += ` AND importance >= $${paramIndex++}`;
       searchParams.push(minImportance);
     }
 
     if (maxImportance !== undefined) {
-      cteFilters += ` AND importance <= $${paramIndex++}`;
+      outerFilters += ` AND importance <= $${paramIndex++}`;
       searchParams.push(maxImportance);
     }
 
     if (dateRange?.startDate) {
-      cteFilters += ` AND created_at >= $${paramIndex++}`;
+      outerFilters += ` AND created_at >= $${paramIndex++}`;
       searchParams.push(dateRange.startDate);
     }
 
     if (dateRange?.endDate) {
-      cteFilters += ` AND created_at <= $${paramIndex++}`;
+      outerFilters += ` AND created_at <= $${paramIndex++}`;
       searchParams.push(dateRange.endDate);
     }
 
-    // Apply CTE filters to the inner query
-    searchQuery = searchQuery.replace("WHERE 1=1", `WHERE 1=1${cteFilters}`);
+    // Apply additional filters to the outer query
+    if (outerFilters) {
+      searchQuery = searchQuery.replace(
+        "WHERE (keyword_score > 0 OR semantic_score > 0.7 OR tag_score > 0)",
+        `WHERE (keyword_score > 0 OR semantic_score > 0.7 OR tag_score > 0)${outerFilters}`
+      );
+    }
 
     // Add comprehensive scoring and sorting
     switch (sortBy) {
