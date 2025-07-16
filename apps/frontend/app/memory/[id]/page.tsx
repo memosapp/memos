@@ -18,10 +18,12 @@ import {
   MessageSquare,
   Sparkles,
   Tag,
+  Edit,
 } from "lucide-react";
 import { Memo } from "@/components/types";
 import { formatDate } from "@/lib/helpers";
 import apiClient from "@/lib/api";
+import { EditMemoryDialog } from "./components/EditMemoryDialog";
 import "@/styles/animation.css";
 
 export default function MemoryDetailPage() {
@@ -33,32 +35,36 @@ export default function MemoryDetailPage() {
 
   const memoId = params.id as string;
 
+  const fetchMemo = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.get(`/memo/${memoId}`);
+      const data = response.data;
+
+      // Convert date strings to Date objects
+      data.createdAt = new Date(data.createdAt);
+      data.updatedAt = new Date(data.updatedAt);
+
+      setMemo(data);
+    } catch (err: any) {
+      console.error("Error fetching memo:", err);
+      const errorMessage =
+        err.response?.data?.error || err.message || "Failed to load memo";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMemo = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get(`/memo/${memoId}`);
-        const data = response.data;
-
-        // Convert date strings to Date objects
-        data.createdAt = new Date(data.createdAt);
-        data.updatedAt = new Date(data.updatedAt);
-
-        setMemo(data);
-      } catch (err: any) {
-        console.error("Error fetching memo:", err);
-        const errorMessage =
-          err.response?.data?.error || err.message || "Failed to load memo";
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (memoId) {
       fetchMemo();
     }
   }, [memoId]);
+
+  const handleMemoUpdate = (updatedMemo: Memo) => {
+    setMemo(updatedMemo);
+  };
 
   // Loading State
   if (loading) {
@@ -178,16 +184,32 @@ export default function MemoryDetailPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto p-6 max-w-4xl">
         {/* Header Navigation */}
-        <div className="flex items-center gap-4 mb-6 animate-fade-slide-down">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="text-sm text-muted-foreground">
-            <span>Memory</span>
-            <span className="mx-2">›</span>
-            <span className="font-medium">#{memo.id}</span>
+        <div className="flex items-center justify-between mb-6 animate-fade-slide-down">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              <span>Memory</span>
+              <span className="mx-2">›</span>
+              <span className="font-medium">#{memo.id}</span>
+            </div>
           </div>
+
+          <EditMemoryDialog
+            memo={memo}
+            onSuccess={handleMemoUpdate}
+            trigger={
+              <Button
+                variant="default"
+                className="flex items-center gap-2 ext-white shadow-md hover:shadow-lg"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Memory
+              </Button>
+            }
+          />
         </div>
 
         {/* Page Title */}
@@ -251,10 +273,12 @@ export default function MemoryDetailPage() {
           {/* Content Section */}
           <Card className="animate-fade-slide-down delay-3">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                Content
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  Content
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="bg-muted/50 p-4 rounded-lg border">
@@ -271,7 +295,7 @@ export default function MemoryDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  AI Summary
+                  Summary
                 </CardTitle>
               </CardHeader>
               <CardContent>
