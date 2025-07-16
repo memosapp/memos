@@ -29,6 +29,7 @@ export const createMemo = async (
       authorRole,
       importance = 1.0,
       tags,
+      appName,
     }: Omit<CreateMemoRequest, "userId"> = req.body;
 
     // Validate required fields (sessionId is now optional)
@@ -48,9 +49,9 @@ export const createMemo = async (
 
     // Insert memo into database
     const query = `
-      INSERT INTO memos (session_id, user_id, content, summary, author_role, importance, tags, embedding)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
+      INSERT INTO memos (session_id, user_id, content, summary, author_role, importance, tags, app_name, embedding)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
     `;
 
     const values = [
@@ -61,6 +62,7 @@ export const createMemo = async (
       authorRole,
       importance,
       formatTags(tags),
+      appName || null,
       JSON.stringify(embedding),
     ];
 
@@ -77,6 +79,7 @@ export const createMemo = async (
       importance: row.importance,
       accessCount: row.access_count,
       tags: parseTags(row.tags),
+      appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -101,7 +104,7 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
     const { sessionId, limit = 50, offset = 0 } = req.query;
 
     let query = `
-      SELECT id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
+      SELECT id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
       FROM memos
       WHERE user_id = $1
     `;
@@ -128,6 +131,7 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
       importance: row.importance,
       accessCount: row.access_count,
       tags: parseTags(row.tags),
+      appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
@@ -164,7 +168,7 @@ export const getMemoById = async (
       UPDATE memos 
       SET access_count = access_count + 1 
       WHERE id = $1 AND user_id = $2
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
+      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
     `;
 
     const result = await pool.query(query, [id, userId]);
@@ -185,6 +189,7 @@ export const getMemoById = async (
       importance: row.importance,
       accessCount: row.access_count,
       tags: parseTags(row.tags),
+      appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -273,6 +278,11 @@ export const updateMemo = async (
       updateValues.push(formatTags(updates.tags));
     }
 
+    if (updates.appName !== undefined) {
+      updateFields.push(`app_name = $${paramIndex++}`);
+      updateValues.push(updates.appName);
+    }
+
     if (updateFields.length === 0) {
       res.status(400).json({ error: "No fields to update" });
       return;
@@ -287,7 +297,7 @@ export const updateMemo = async (
       UPDATE memos 
       SET ${updateFields.join(", ")} 
       WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
+      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
     `;
 
     const result = await pool.query(query, updateValues);
@@ -303,6 +313,7 @@ export const updateMemo = async (
       importance: row.importance,
       accessCount: row.access_count,
       tags: parseTags(row.tags),
+      appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

@@ -5,6 +5,7 @@ import {
   Pause,
   Archive,
   Play,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,6 +139,12 @@ export function MemoryTable() {
             </TableHead>
             <TableHead className="w-[140px] border-zinc-700">
               <div className="flex items-center w-full justify-center">
+                <Sparkles className="mr-1" size={16} />
+                App
+              </div>
+            </TableHead>
+            <TableHead className="w-[140px] border-zinc-700">
+              <div className="flex items-center w-full justify-center">
                 <CiCalendar className="mr-1" size={16} />
                 Created On
               </div>
@@ -220,6 +227,15 @@ export function MemoryTable() {
                 <div className="text-xs text-zinc-500 capitalize">
                   {memory.metadata?.authorRole || "user"}
                 </div>
+              </TableCell>
+              <TableCell className="w-[140px] text-center">
+                {memory.appName ? (
+                  <div className="text-xs text-green-600 capitalize">
+                    {memory.appName}
+                  </div>
+                ) : (
+                  <div className="text-xs text-zinc-500">Manual</div>
+                )}
               </TableCell>
               <TableCell className="w-[140px] text-center">
                 {formatDate(memory.created_at)}

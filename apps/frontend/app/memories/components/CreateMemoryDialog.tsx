@@ -61,6 +61,7 @@ export function CreateMemoryDialog({
     authorRole: defaultAuthorRole,
     importance: defaultImportance,
     tags: defaultTags,
+    appName: undefined as string | undefined,
   });
 
   const [newTag, setNewTag] = useState("");
@@ -105,6 +106,7 @@ export function CreateMemoryDialog({
       authorRole: defaultAuthorRole,
       importance: defaultImportance,
       tags: defaultTags,
+      appName: undefined,
     });
     setNewTag("");
   };
@@ -121,7 +123,11 @@ export function CreateMemoryDialog({
       const enhancedContent = await aiAssistance.enhanceContent(
         formData.content
       );
-      setFormData((prev) => ({ ...prev, content: enhancedContent }));
+      setFormData((prev) => ({
+        ...prev,
+        content: enhancedContent,
+        appName: "Gemini",
+      }));
       toast.success("Content enhanced successfully!");
     } catch (error) {
       console.error("Error enhancing content:", error);
@@ -140,7 +146,7 @@ export function CreateMemoryDialog({
     setAiLoading((prev) => ({ ...prev, generateSummary: true }));
     try {
       const summary = await aiAssistance.summarizeContent(formData.content);
-      setFormData((prev) => ({ ...prev, summary }));
+      setFormData((prev) => ({ ...prev, summary, appName: "Gemini" }));
       toast.success("Summary generated successfully!");
     } catch (error) {
       console.error("Error generating summary:", error);
@@ -160,7 +166,7 @@ export function CreateMemoryDialog({
     try {
       const suggestedTags = await aiAssistance.generateTags(formData.content);
       const uniqueTags = [...new Set([...formData.tags, ...suggestedTags])];
-      setFormData((prev) => ({ ...prev, tags: uniqueTags }));
+      setFormData((prev) => ({ ...prev, tags: uniqueTags, appName: "Gemini" }));
       toast.success("Tags generated successfully!");
     } catch (error) {
       console.error("Error generating tags:", error);
@@ -177,7 +183,11 @@ export function CreateMemoryDialog({
     setAiLoading((prev) => ({ ...prev, generateContent: true }));
     try {
       const generatedContent = await aiAssistance.generateContent(prompt);
-      setFormData((prev) => ({ ...prev, content: generatedContent }));
+      setFormData((prev) => ({
+        ...prev,
+        content: generatedContent,
+        appName: "Gemini",
+      }));
       toast.success("Content generated successfully!");
     } catch (error) {
       console.error("Error generating content:", error);
@@ -202,6 +212,7 @@ export function CreateMemoryDialog({
         authorRole: formData.authorRole,
         importance: formData.importance,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
+        appName: formData.appName || undefined,
       };
 
       const createdMemo = await createMemo(memoRequest);

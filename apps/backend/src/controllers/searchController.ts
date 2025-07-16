@@ -50,7 +50,7 @@ export const searchMemos = async (
     // Build the complex search query with hybrid scoring
     let searchQuery = `
       SELECT 
-        id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at,
+        id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at,
         (
           -- Keyword matching (30% weight)
           CASE 
@@ -156,6 +156,7 @@ export const searchMemos = async (
       importance: row.importance,
       accessCount: row.access_count,
       tags: parseTags(row.tags),
+      appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));

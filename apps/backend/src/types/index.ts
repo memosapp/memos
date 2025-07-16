@@ -14,6 +14,7 @@ export interface Memo {
   importance?: number;
   accessCount?: number;
   tags?: string[];
+  appName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +27,7 @@ export interface CreateMemoRequest {
   authorRole: AuthorRole;
   importance?: number;
   tags?: string[];
+  appName?: string;
 }
 
 export interface UpdateMemoRequest {
@@ -36,6 +38,7 @@ export interface UpdateMemoRequest {
   authorRole?: AuthorRole;
   importance?: number;
   tags?: string[];
+  appName?: string;
 }
 
 export interface SearchRequest {

@@ -217,6 +217,15 @@ export default function MemoryDetailPage() {
                   <User className="h-3 w-3" />
                   {memo.authorRole}
                 </Badge>
+                {memo.appName && (
+                  <Badge
+                    variant="outline"
+                    className="gap-1 bg-green-100 text-green-800 border-green-300"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    {memo.appName}
+                  </Badge>
+                )}
                 {memo.importance && (
                   <Badge variant="outline" className="gap-1">
                     <Star className="h-3 w-3" />

@@ -14,6 +14,7 @@ export interface Memo {
   importance?: number;
   accessCount?: number;
   tags?: string[];
+  appName?: string;
   createdAt: Date | string; // Allow both Date and string for flexibility
   updatedAt: Date | string; // Allow both Date and string for flexibility
 }
@@ -26,6 +27,7 @@ export interface CreateMemoRequest {
   authorRole: AuthorRole;
   importance?: number;
   tags?: string[];
+  appName?: string;
 }
 
 export interface UpdateMemoRequest {
@@ -36,6 +38,7 @@ export interface UpdateMemoRequest {
   authorRole?: AuthorRole;
   importance?: number;
   tags?: string[];
+  appName?: string;
 }
 
 export interface SearchRequest {
@@ -51,6 +54,7 @@ export interface Memory {
   memory: string;
   metadata: any;
   tags: string[]; // Tags for organizing memories
+  appName?: string;
   created_at: number;
   state: "active" | "paused" | "archived" | "deleted";
 }

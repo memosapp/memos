@@ -10,6 +10,7 @@ export interface AIAssistanceRequest {
 export interface AIAssistanceResponse {
   result: string;
   suggestions?: string[];
+  appName?: string;
 }
 
 export async function getAIAssistance(
@@ -77,11 +78,13 @@ Return only the generated content without any additional explanation.`;
       return {
         result: text,
         suggestions: tags,
+        appName: "Gemini",
       };
     }
 
     return {
       result: text.trim(),
+      appName: "Gemini",
     };
   } catch (error) {
     console.error("Error in AI assistance:", error);
