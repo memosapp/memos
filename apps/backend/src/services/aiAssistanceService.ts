@@ -59,7 +59,7 @@ Return only the generated content without any additional explanation.`;
     }
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-001",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
