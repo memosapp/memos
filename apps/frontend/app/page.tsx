@@ -75,7 +75,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div>
+          <div className="space-y-6">
             <div className="animate-fade-slide-down delay-1">
               <MemoryFilters />
             </div>

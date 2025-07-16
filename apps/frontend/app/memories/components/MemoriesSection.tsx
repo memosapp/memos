@@ -10,6 +10,11 @@ import { MemoryPagination } from "./MemoryPagination";
 import { PageSizeSelector } from "./PageSizeSelector";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import { Memo } from "@/components/types";
+import { Button } from "@/components/ui/button";
+import { CreateMemoryDialog } from "./CreateMemoryDialog";
+import { HiMiniRectangleStack } from "react-icons/hi2";
+import { Plus } from "lucide-react";
+import { MemoryTableSkeleton } from "@/skeleton/MemoryTableSkeleton";
 
 // Utility function to serialize memo dates for Redux
 const serializeMemo = (memo: Memo): Memo => ({
@@ -196,26 +201,72 @@ export function MemoriesSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-zinc-400">
-            {isLoading ? "Loading..." : `${totalItems} memories found`}
-          </span>
+      {/* Loading State */}
+      {isLoading && <MemoryTableSkeleton />}
+
+      {/* Memory Table */}
+      {!isLoading && (
+        <>
+          <MemoryTable />
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-zinc-800/30 rounded-lg border border-zinc-800">
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-zinc-400">
+                Showing {memos.length} of {totalItems} memories
+              </div>
+              <PageSizeSelector
+                pageSize={itemsPerPage}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {totalPages > 1 && (
+                <MemoryPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={handlePageChange}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && memos.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+            <HiMiniRectangleStack className="h-8 w-8 text-zinc-500" />
+          </div>
+          <h3 className="text-lg font-medium text-zinc-300 mb-2">
+            No memories found
+          </h3>
+          <p className="text-zinc-500 mb-6 max-w-md">
+            {searchQuery ||
+            appNames.length > 0 ||
+            tags.length > 0 ||
+            authorRoles.length > 0
+              ? "Try adjusting your filters or search query to find more memories."
+              : "Get started by creating your first memory using the button above."}
+          </p>
+          {!(
+            searchQuery ||
+            appNames.length > 0 ||
+            tags.length > 0 ||
+            authorRoles.length > 0
+          ) && (
+            <CreateMemoryDialog
+              trigger={
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Your First Memory
+                </Button>
+              }
+            />
+          )}
         </div>
-        <PageSizeSelector
-          pageSize={itemsPerPage}
-          onPageSizeChange={handlePageSizeChange}
-        />
-      </div>
-
-      <MemoryTable />
-
-      {totalPages > 1 && (
-        <MemoryPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          setCurrentPage={handlePageChange}
-        />
       )}
     </div>
   );

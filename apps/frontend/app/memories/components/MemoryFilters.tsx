@@ -1,5 +1,5 @@
 "use client";
-import { Archive, Pause, Play, Search } from "lucide-react";
+import { Archive, Pause, Play, Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FiTrash2 } from "react-icons/fi";
@@ -52,107 +52,113 @@ export function MemoryFilters() {
         abortControllerRef.current.abort();
       }
 
-      // Create new AbortController for this search
+      // Create new abort controller for this search
       abortControllerRef.current = new AbortController();
+      const currentController = abortControllerRef.current;
+
+      setIsSearching(true);
 
       try {
-        setIsSearching(true);
-
+        // Update URL with search query
         const params = new URLSearchParams(searchParams.toString());
-
-        // Validate query length
-        if (query && query.length < 2) {
-          // Don't search for very short queries
-          return;
-        }
-
-        if (query && query.length > 500) {
-          // Trim excessively long queries
-          query = query.substring(0, 500);
-        }
-
-        if (query) {
+        if (query.trim()) {
           params.set("search", query);
         } else {
           params.delete("search");
         }
+        params.set("page", "1"); // Reset to page 1 on new search
 
-        params.set("page", "1"); // Reset to page 1 on search
-        router.push(`/memories?${params.toString()}`);
+        // Only update URL if search wasn't aborted
+        if (!currentController.signal.aborted) {
+          router.push(`?${params.toString()}`);
+        }
       } catch (error: any) {
         if (error?.name !== "AbortError") {
           console.error("Search error:", error);
         }
       } finally {
-        setIsSearching(false);
+        if (!currentController.signal.aborted) {
+          setIsSearching(false);
+        }
       }
     },
     [searchParams, router]
   );
 
-  // Debounced search with longer delay for better performance
-  const handleSearch = debounce(performSearch, 750);
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      performSearch(query);
+    }, 300),
+    [performSearch]
+  );
 
+  // Initialize search input from URL
   useEffect(() => {
-    // Set the input value to the current search param
-    if (searchParams.get("search")) {
-      if (inputRef.current) {
-        inputRef.current.value = searchParams.get("search") || "";
-      }
+    const searchQuery = searchParams.get("search") || "";
+    if (inputRef.current && inputRef.current.value !== searchQuery) {
+      inputRef.current.value = searchQuery;
     }
   }, [searchParams]);
 
-  // Cleanup: Cancel any pending search when component unmounts
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      handleSearch.cancel();
-    };
-  }, [handleSearch]);
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+    <div className="space-y-6">
+      {/* Top Row - Search and Primary Actions */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+        {/* Search Bar */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
           <Input
             ref={inputRef}
-            placeholder="Search memories... (min 2 characters)"
-            className="pl-8 bg-zinc-950 border-zinc-800 max-w-[500px]"
-            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search memories..."
+            className="pl-10 pr-4 bg-zinc-800/50 border-zinc-700 focus:border-blue-500 focus:ring-blue-500/20 text-white placeholder-zinc-400"
+            onChange={(e) => debouncedSearch(e.target.value)}
             disabled={isSearching}
           />
           {isSearching && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-white"></div>
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
             </div>
           )}
         </div>
-        <div className="flex gap-2">
-          <CreateMemoryDialog />
+
+        {/* Primary Actions */}
+        <div className="flex items-center gap-3">
+          <CreateMemoryDialog
+            trigger={
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Memory
+              </Button>
+            }
+          />
+
           {selectedMemoIds.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="bg-zinc-900 text-zinc-300">
-                  Actions ({selectedMemoIds.length})
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={handleDeleteSelected}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <FiTrash2 className="mr-2 h-4 w-4" />
-                  Delete Selected
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-zinc-400">
+                {selectedMemoIds.length} selected
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelected}
+                className="gap-2 hover:bg-red-600 transition-colors"
+              >
+                <FiTrash2 className="h-4 w-4" />
+                Delete Selected
+              </Button>
+            </div>
           )}
         </div>
       </div>
-      <AdvancedMemoryFilters />
+
+      {/* Advanced Filters */}
+      <div className="border-t border-zinc-800 pt-4">
+        <AdvancedMemoryFilters />
+      </div>
     </div>
   );
 }

@@ -201,7 +201,6 @@ export const searchMemos = async (
     queryParams.push(Number(limit));
 
     console.log("Search query:", searchQuery);
-    console.log("Search params:", queryParams);
 
     const result = await pool.query(searchQuery, queryParams);
 

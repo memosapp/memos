@@ -196,236 +196,297 @@ export function AdvancedMemoryFilters() {
     filters.appNames.length + filters.tags.length + filters.authorRoles.length;
 
   return (
-    <div className="flex items-center gap-2 mb-4">
-      {/* Quick Sort Buttons */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            {filters.sortOrder === "asc" ? (
-              <SortAsc className="h-4 w-4" />
-            ) : (
-              <SortDesc className="h-4 w-4" />
-            )}
-            Sort
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => quickSort("updatedAt", "desc")}>
-            <Clock className="h-4 w-4 mr-2" />
-            Newest Updated
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => quickSort("updatedAt", "asc")}>
-            <Clock className="h-4 w-4 mr-2" />
-            Oldest Updated
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => quickSort("createdAt", "desc")}>
-            <Calendar className="h-4 w-4 mr-2" />
-            Newest Created
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => quickSort("createdAt", "asc")}>
-            <Calendar className="h-4 w-4 mr-2" />
-            Oldest Created
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => quickSort("accessCount", "desc")}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Most Viewed
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => quickSort("accessCount", "asc")}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Least Viewed
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Advanced Filters Dialog */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filters
-            {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {activeFiltersCount}
-              </Badge>
-            )}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Filter Memories</DialogTitle>
-          </DialogHeader>
-
-          <Tabs defaultValue="apps" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="apps" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Apps
-                {tempFilters.appNames.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {tempFilters.appNames.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="tags" className="flex items-center gap-2">
-                <Tag className="h-4 w-4" />
-                Tags
-                {tempFilters.tags.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {tempFilters.tags.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="roles" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Roles
-                {tempFilters.authorRoles.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {tempFilters.authorRoles.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="apps" className="mt-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Select Apps</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setTempFilters((prev) => ({ ...prev, appNames: [] }))
-                    }
-                  >
-                    Clear All
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto">
-                  {uniqueAppNames.map((appName) => (
-                    <div key={appName} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`app-${appName}`}
-                        checked={tempFilters.appNames.includes(appName)}
-                        onCheckedChange={() => toggleAppName(appName)}
-                      />
-                      <Label
-                        htmlFor={`app-${appName}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize"
-                      >
-                        {appName}
-                      </Label>
-                    </div>
-                  ))}
-                  {uniqueAppNames.length === 0 && (
-                    <p className="text-sm text-muted-foreground col-span-2">
-                      No apps found in your memories
-                    </p>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="tags" className="mt-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Select Tags</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setTempFilters((prev) => ({ ...prev, tags: [] }))
-                    }
-                  >
-                    Clear All
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto">
-                  {uniqueTags.map((tag) => (
-                    <div key={tag} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`tag-${tag}`}
-                        checked={tempFilters.tags.includes(tag)}
-                        onCheckedChange={() => toggleTag(tag)}
-                      />
-                      <Label
-                        htmlFor={`tag-${tag}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {tag}
-                      </Label>
-                    </div>
-                  ))}
-                  {uniqueTags.length === 0 && (
-                    <p className="text-sm text-muted-foreground col-span-2">
-                      No tags found in your memories
-                    </p>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="roles" className="mt-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Select Author Roles</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setTempFilters((prev) => ({ ...prev, authorRoles: [] }))
-                    }
-                  >
-                    Clear All
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {authorRoles.map((role) => (
-                    <div key={role} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`role-${role}`}
-                        checked={tempFilters.authorRoles.includes(role)}
-                        onCheckedChange={() => toggleAuthorRole(role)}
-                      />
-                      <Label
-                        htmlFor={`role-${role}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize"
-                      >
-                        {role}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <div className="flex justify-between items-center mt-6">
-            <Button variant="outline" onClick={clearFilters}>
-              Clear All Filters
-            </Button>
-            <div className="flex items-center gap-2">
+    <div className="space-y-4">
+      {/* Filter Controls Row */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        {/* Left Side - Sort and Filter Buttons */}
+        <div className="flex items-center gap-3">
+          {/* Quick Sort Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                onClick={() => {
-                  setTempFilters(filters);
-                  setIsOpen(false);
-                }}
+                size="sm"
+                className="gap-2 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700/50 hover:border-zinc-600"
               >
-                Cancel
+                {filters.sortOrder === "asc" ? (
+                  <SortAsc className="h-4 w-4" />
+                ) : (
+                  <SortDesc className="h-4 w-4" />
+                )}
+                Sort
+                <span className="text-xs text-zinc-400 ml-1">
+                  {filters.sortBy === "updatedAt"
+                    ? "Updated"
+                    : filters.sortBy === "createdAt"
+                    ? "Created"
+                    : "Views"}
+                </span>
               </Button>
-              <Button onClick={applyFilters}>Apply Filters</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-48 bg-zinc-900 border-zinc-800"
+            >
+              <DropdownMenuLabel className="text-zinc-400">
+                Sort by
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
+                onClick={() => quickSort("updatedAt", "desc")}
+                className="hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Newest Updated
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => quickSort("updatedAt", "asc")}
+                className="hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Oldest Updated
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => quickSort("createdAt", "desc")}
+                className="hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Newest Created
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => quickSort("createdAt", "asc")}
+                className="hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Oldest Created
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => quickSort("accessCount", "desc")}
+                className="hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Most Viewed
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => quickSort("accessCount", "asc")}
+                className="hover:bg-zinc-800 focus:bg-zinc-800"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Least Viewed
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Advanced Filters Dialog */}
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700/50 hover:border-zinc-600"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 bg-blue-600 text-white"
+                  >
+                    {activeFiltersCount}
+                  </Badge>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-800">
+              <DialogHeader>
+                <DialogTitle className="text-white">
+                  Filter Memories
+                </DialogTitle>
+              </DialogHeader>
+
+              <Tabs defaultValue="apps" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
+                  <TabsTrigger
+                    value="apps"
+                    className="flex items-center gap-2 data-[state=active]:bg-zinc-700"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Apps
+                    {tempFilters.appNames.length > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-1 bg-blue-600 text-white"
+                      >
+                        {tempFilters.appNames.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="tags"
+                    className="flex items-center gap-2 data-[state=active]:bg-zinc-700"
+                  >
+                    <Tag className="h-4 w-4" />
+                    Tags
+                    {tempFilters.tags.length > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-1 bg-blue-600 text-white"
+                      >
+                        {tempFilters.tags.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="roles"
+                    className="flex items-center gap-2 data-[state=active]:bg-zinc-700"
+                  >
+                    <User className="h-4 w-4" />
+                    Roles
+                    {tempFilters.authorRoles.length > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-1 bg-blue-600 text-white"
+                      >
+                        {tempFilters.authorRoles.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="apps" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="text-sm text-zinc-400">
+                      Filter by application source
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                      {uniqueAppNames.map((appName) => (
+                        <div
+                          key={appName}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`app-${appName}`}
+                            checked={tempFilters.appNames.includes(appName)}
+                            onCheckedChange={() => toggleAppName(appName)}
+                            className="border-zinc-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                          />
+                          <Label
+                            htmlFor={`app-${appName}`}
+                            className="text-sm font-medium text-zinc-300 cursor-pointer capitalize"
+                          >
+                            {appName}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="tags" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="text-sm text-zinc-400">Filter by tags</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                      {uniqueTags.map((tag) => (
+                        <div key={tag} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`tag-${tag}`}
+                            checked={tempFilters.tags.includes(tag)}
+                            onCheckedChange={() => toggleTag(tag)}
+                            className="border-zinc-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                          />
+                          <Label
+                            htmlFor={`tag-${tag}`}
+                            className="text-sm font-medium text-zinc-300 cursor-pointer"
+                          >
+                            {tag}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="roles" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="text-sm text-zinc-400">
+                      Filter by author role
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {authorRoles.map((role) => (
+                        <div key={role} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`role-${role}`}
+                            checked={tempFilters.authorRoles.includes(role)}
+                            onCheckedChange={() => toggleAuthorRole(role)}
+                            className="border-zinc-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                          />
+                          <Label
+                            htmlFor={`role-${role}`}
+                            className="text-sm font-medium text-zinc-300 cursor-pointer capitalize"
+                          >
+                            {role}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex justify-between items-center mt-6 pt-4 border-t border-zinc-800">
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                >
+                  Clear All Filters
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setTempFilters(filters);
+                      setIsOpen(false);
+                    }}
+                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={applyFilters}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Apply Filters
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Right Side - Clear All Filters */}
+        {activeFiltersCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50"
+          >
+            Clear All ({activeFiltersCount})
+          </Button>
+        )}
+      </div>
 
       {/* Active Filters Display */}
       {activeFiltersCount > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap p-3 bg-zinc-800/30 rounded-lg border border-zinc-800">
+          <span className="text-sm text-zinc-400 mr-2">Active filters:</span>
           {filters.appNames.map((appName) => (
-            <Badge key={appName} variant="secondary" className="gap-1">
+            <Badge
+              key={appName}
+              variant="secondary"
+              className="gap-1 bg-blue-600/20 text-blue-300 border-blue-600/30 hover:bg-blue-600/30"
+            >
               <Sparkles className="h-3 w-3" />
               {appName}
               <button
@@ -441,14 +502,18 @@ export function AdvancedMemoryFilters() {
                   }
                   router.push(`?${params.toString()}`);
                 }}
-                className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                className="ml-1 hover:bg-blue-600/40 rounded-full p-0.5 transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
             </Badge>
           ))}
           {filters.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="gap-1">
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="gap-1 bg-green-600/20 text-green-300 border-green-600/30 hover:bg-green-600/30"
+            >
               <Tag className="h-3 w-3" />
               {tag}
               <button
@@ -462,14 +527,18 @@ export function AdvancedMemoryFilters() {
                   }
                   router.push(`?${params.toString()}`);
                 }}
-                className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                className="ml-1 hover:bg-green-600/40 rounded-full p-0.5 transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
             </Badge>
           ))}
           {filters.authorRoles.map((role) => (
-            <Badge key={role} variant="secondary" className="gap-1">
+            <Badge
+              key={role}
+              variant="secondary"
+              className="gap-1 bg-purple-600/20 text-purple-300 border-purple-600/30 hover:bg-purple-600/30"
+            >
               <User className="h-3 w-3" />
               {role}
               <button
@@ -485,7 +554,7 @@ export function AdvancedMemoryFilters() {
                   }
                   router.push(`?${params.toString()}`);
                 }}
-                className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                className="ml-1 hover:bg-purple-600/40 rounded-full p-0.5 transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>

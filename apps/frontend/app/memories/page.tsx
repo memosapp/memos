@@ -23,20 +23,39 @@ export default function MemoriesPage() {
   }, []);
 
   return (
-    <div className="">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
       <UpdateMemo
         memoId={updateMemoDialog.memoId || ""}
         memoContent={updateMemoDialog.memoContent || ""}
         open={updateMemoDialog.isOpen}
         onOpenChange={handleCloseUpdateMemoDialog}
       />
-      <main className="flex-1 py-6">
-        <div className="container">
-          <div className="mt-1 pb-4 animate-fade-slide-down">
-            <MemoryFilters />
+      <main className="flex-1 py-8">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header Section */}
+          <div className="mb-8 animate-fade-slide-down">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+                  Memories
+                </h1>
+                <p className="text-zinc-400 mt-1">
+                  Manage and explore your captured memories
+                </p>
+              </div>
+            </div>
+
+            {/* Filters Section with enhanced styling */}
+            <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 p-6 shadow-xl ">
+              <MemoryFilters />
+            </div>
           </div>
+
+          {/* Main Content */}
           <div className="animate-fade-slide-down delay-1">
-            <MemoriesSection />
+            <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-xl overflow-hidden">
+              <MemoriesSection />
+            </div>
           </div>
         </div>
       </main>
