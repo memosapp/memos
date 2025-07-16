@@ -4,6 +4,12 @@ export enum AuthorRole {
   SYSTEM = "system",
 }
 
+export enum ApiKeyPermission {
+  READ = "read",
+  WRITE = "write",
+  ADMIN = "admin",
+}
+
 export interface Memo {
   id: number;
   sessionId: string;
@@ -46,6 +52,57 @@ export interface SearchRequest {
   userId?: string;
   sessionId?: string;
   limit?: number;
+}
+
+export interface ApiKey {
+  id: number;
+  userId: string;
+  name: string;
+  keyPrefix: string;
+  permissions: ApiKeyPermission[];
+  isActive: boolean;
+  lastUsedAt?: Date | string;
+  usageCount: number;
+  expiresAt?: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  isExpired?: boolean;
+}
+
+export interface CreateApiKeyRequest {
+  name: string;
+  permissions: ApiKeyPermission[];
+  expiresAt?: Date | string;
+}
+
+export interface UpdateApiKeyRequest {
+  name?: string;
+  permissions?: ApiKeyPermission[];
+  isActive?: boolean;
+  expiresAt?: Date | string;
+}
+
+export interface GeneratedApiKey {
+  id: number;
+  name: string;
+  key: string; // Plain text key - only shown once
+  keyPrefix: string;
+  permissions: ApiKeyPermission[];
+  expiresAt?: Date | string;
+  createdAt: Date | string;
+}
+
+export interface ApiKeyStats {
+  totalKeys: number;
+  activeKeys: number;
+  expiredKeys: number;
+  totalUsage: number;
+}
+
+export interface ApiKeyPermissionInfo {
+  value: ApiKeyPermission;
+  label: string;
+  description: string;
 }
 
 // Legacy interface for backward compatibility - updated to match backend structure

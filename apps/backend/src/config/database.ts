@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import dotenv from "dotenv";
+import { initializeDynamicTypeParsers } from "./types";
 
 // Load environment variables
 dotenv.config();
@@ -10,6 +11,11 @@ export const pool = new Pool({
   database: process.env.DB_NAME || "memos_db",
   user: process.env.DB_USER || "postgres",
   password: process.env.DB_PASSWORD || "password",
+});
+
+// Initialize PostgreSQL type parsers on startup
+initializeDynamicTypeParsers(pool).catch((error) => {
+  console.error("Failed to initialize PostgreSQL type parsers:", error);
 });
 
 // Graceful shutdown handler

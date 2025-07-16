@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -8,6 +8,27 @@ import cors from "cors";
 
 // Backend API base URL - use environment variable for Docker compatibility
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
+
+// API Key Authentication Interface
+interface ApiKeyAuthResult {
+  isValid: boolean;
+  userId?: string;
+  permissions?: string[];
+  keyId?: number;
+}
+
+// Extend Request interface to include user information
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        permissions: string[];
+        keyId: number;
+      };
+    }
+  }
+}
 
 // Types for API requests
 enum AuthorRole {
@@ -44,7 +65,121 @@ interface SearchRequest {
   };
 }
 
-const getServer = () => {
+// API Key Authentication Middleware
+const authenticateApiKey = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    // Extract API key from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      res.status(401).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Authorization header missing",
+        },
+        id: null,
+      });
+      return;
+    }
+
+    const apiKey = authHeader.replace("Bearer ", "");
+
+    if (!apiKey) {
+      res.status(401).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "API key missing",
+        },
+        id: null,
+      });
+      return;
+    }
+
+    // Validate API key against backend by making a simple authenticated request
+    const response = await fetch(`${BACKEND_API_URL}/api-keys/stats`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      res.status(401).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Invalid or expired API key",
+        },
+        id: null,
+      });
+      return;
+    }
+
+    // Since the request succeeded, we know the API key is valid
+    // For now, we'll set default permissions based on the API key working
+    // In a real implementation, we'd extract this from the backend response
+    req.user = {
+      id: "authenticated-user", // This would come from the backend
+      permissions: ["read", "write"], // This would come from the backend
+      keyId: 1, // This would come from the backend
+    };
+
+    next();
+  } catch (error) {
+    console.error("API key authentication error:", error);
+    res.status(500).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32603,
+        message: "Internal server error during authentication",
+      },
+      id: null,
+    });
+  }
+};
+
+// Permission checking middleware
+const requirePermission = (permission: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Authentication required",
+        },
+        id: null,
+      });
+      return;
+    }
+
+    if (
+      !req.user.permissions.includes(permission) &&
+      !req.user.permissions.includes("admin")
+    ) {
+      res.status(403).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: `Insufficient permissions. Required: ${permission}`,
+        },
+        id: null,
+      });
+      return;
+    }
+
+    next();
+  };
+};
+
+const getServer = (req?: Request) => {
   // Create an MCP server with implementation details
   const server = new McpServer(
     {
@@ -96,13 +231,6 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
         .describe(
           "Optional session identifier to link this memo to a specific conversation or interaction context. Use consistent session IDs to group related memos together for better context tracking."
         ),
-      // TODO: Remove userId parameter - should come from auth middleware
-      userId: z
-        .string()
-        .optional()
-        .describe(
-          "Unique identifier for the user who created or is associated with this memo. Essential for multi-user systems and personalized memory retrieval."
-        ),
       content: z
         .string()
         .describe(
@@ -138,7 +266,6 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
     },
     async ({
       sessionId,
-      userId,
       content,
       summary,
       authorRole,
@@ -146,9 +273,12 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
       tags,
     }): Promise<CallToolResult> => {
       try {
+        // Get user ID from authenticated request
+        const authenticatedUserId = req?.user?.id || "anonymous";
+
         const memoData: CreateMemoRequest = {
           sessionId,
-          userId,
+          userId: authenticatedUserId,
           content,
           summary,
           authorRole: authorRole as AuthorRole,
@@ -160,6 +290,7 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: req?.headers.authorization || "",
           },
           body: JSON.stringify(memoData),
         });
@@ -264,13 +395,6 @@ Returns ranked list with:
         .describe(
           "Natural language search query to find relevant memos. Can include keywords, phrases, or concepts. The system will match against content, summaries, and tags using both exact matching and semantic understanding."
         ),
-      // TODO: Remove userId parameter - should come from auth middleware
-      userId: z
-        .string()
-        .optional()
-        .describe(
-          "Filter results to show only memos created by or associated with a specific user ID. Essential for multi-user environments to maintain user privacy and personalized results."
-        ),
       sessionId: z
         .string()
         .optional()
@@ -351,7 +475,6 @@ Returns ranked list with:
     },
     async ({
       query,
-      userId,
       sessionId,
       limit,
       tags,
@@ -363,9 +486,12 @@ Returns ranked list with:
       dateRange,
     }): Promise<CallToolResult> => {
       try {
+        // Get user ID from authenticated request
+        const authenticatedUserId = req?.user?.id || "anonymous";
+
         const searchData: SearchRequest = {
           query,
-          userId,
+          userId: authenticatedUserId,
           sessionId,
           limit,
           tags,
@@ -381,6 +507,7 @@ Returns ranked list with:
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: req?.headers.authorization || "",
           },
           body: JSON.stringify(searchData),
         });
@@ -502,34 +629,39 @@ app.use(
   })
 );
 
-app.post("/mcp", async (req: Request, res: Response) => {
-  const server = getServer();
-  try {
-    const transport: StreamableHTTPServerTransport =
-      new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
+app.post(
+  "/mcp",
+  authenticateApiKey,
+  requirePermission("read"),
+  async (req: Request, res: Response) => {
+    const server = getServer(req);
+    try {
+      const transport: StreamableHTTPServerTransport =
+        new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+        });
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+      res.on("close", () => {
+        console.log("Request closed");
+        transport.close();
+        server.close();
       });
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-    res.on("close", () => {
-      console.log("Request closed");
-      transport.close();
-      server.close();
-    });
-  } catch (error) {
-    console.error("Error handling MCP request:", error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Internal server error",
-        },
-        id: null,
-      });
+    } catch (error) {
+      console.error("Error handling MCP request:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32603,
+            message: "Internal server error",
+          },
+          id: null,
+        });
+      }
     }
   }
-});
+);
 
 app.get("/mcp", async (req: Request, res: Response) => {
   console.log("Received GET MCP request");

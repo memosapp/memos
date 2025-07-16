@@ -17,6 +17,34 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   User,
   Mail,
   Phone,
@@ -32,12 +60,28 @@ import {
   Save,
   X,
   Upload,
+  Key,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Settings,
+  Activity,
 } from "lucide-react";
 import { supabase } from "@/app/providers";
 import { Session } from "@supabase/supabase-js";
 import { setUser } from "@/store/profileSlice";
 import { AppDispatch } from "@/store/store";
 import { toast } from "sonner";
+import { apiKeys } from "@/lib/api";
+import {
+  ApiKey,
+  ApiKeyPermission,
+  CreateApiKeyRequest,
+  GeneratedApiKey,
+  ApiKeyStats,
+  ApiKeyPermissionInfo,
+} from "@/components/types";
 
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -48,6 +92,27 @@ export default function SettingsPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
+
+  // API Key Management State
+  const [userApiKeys, setUserApiKeys] = useState<ApiKey[]>([]);
+  const [apiKeyStats, setApiKeyStats] = useState<ApiKeyStats | null>(null);
+  const [availablePermissions, setAvailablePermissions] = useState<
+    ApiKeyPermissionInfo[]
+  >([]);
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [createKeyDialog, setCreateKeyDialog] = useState(false);
+  const [generatedKey, setGeneratedKey] = useState<GeneratedApiKey | null>(
+    null
+  );
+  const [showGeneratedKey, setShowGeneratedKey] = useState(false);
+  const [createKeyForm, setCreateKeyForm] = useState({
+    name: "",
+    permissions: [ApiKeyPermission.READ] as ApiKeyPermission[],
+    expiresAt: "",
+  });
+  const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
+  const [editKeyDialog, setEditKeyDialog] = useState(false);
+
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -76,6 +141,8 @@ export default function SettingsPage() {
               session.user.user_metadata?.full_name ||
               ""
           );
+          // Load API keys
+          loadApiKeys();
         }
       } catch (error) {
         console.error("Error in getSession:", error);
@@ -291,6 +358,122 @@ export default function SettingsPage() {
 
   const getInitials = (email: string) => {
     return email.split("@")[0].slice(0, 2).toUpperCase();
+  };
+
+  // API Key Management Functions
+  const loadApiKeys = async () => {
+    try {
+      setApiKeysLoading(true);
+      const [keys, stats, permissions] = await Promise.all([
+        apiKeys.getApiKeys(),
+        apiKeys.getApiKeyStats(),
+        apiKeys.getApiKeyPermissions(),
+      ]);
+      setUserApiKeys(keys);
+      setApiKeyStats(stats);
+      setAvailablePermissions(permissions.permissions);
+    } catch (error) {
+      console.error("Error loading API keys:", error);
+      toast.error("Failed to load API keys");
+    } finally {
+      setApiKeysLoading(false);
+    }
+  };
+
+  const handleCreateApiKey = async () => {
+    try {
+      if (!createKeyForm.name.trim()) {
+        toast.error("Please provide a name for the API key");
+        return;
+      }
+
+      if (createKeyForm.permissions.length === 0) {
+        toast.error("Please select at least one permission");
+        return;
+      }
+
+      const request: CreateApiKeyRequest = {
+        name: createKeyForm.name.trim(),
+        permissions: createKeyForm.permissions,
+        expiresAt: createKeyForm.expiresAt
+          ? new Date(createKeyForm.expiresAt)
+          : undefined,
+      };
+
+      const newKey = await apiKeys.createApiKey(request);
+      setGeneratedKey(newKey);
+      setShowGeneratedKey(true);
+      setCreateKeyDialog(false);
+      setCreateKeyForm({
+        name: "",
+        permissions: [ApiKeyPermission.READ],
+        expiresAt: "",
+      });
+      toast.success("API key created successfully!");
+      await loadApiKeys();
+    } catch (error: any) {
+      console.error("Error creating API key:", error);
+      toast.error(error.response?.data?.error || "Failed to create API key");
+    }
+  };
+
+  const handleUpdateApiKey = async (keyId: number, updates: any) => {
+    try {
+      await apiKeys.updateApiKey(keyId, updates);
+      toast.success("API key updated successfully!");
+      await loadApiKeys();
+      setEditingKey(null);
+      setEditKeyDialog(false);
+    } catch (error: any) {
+      console.error("Error updating API key:", error);
+      toast.error(error.response?.data?.error || "Failed to update API key");
+    }
+  };
+
+  const handleDeleteApiKey = async (keyId: number) => {
+    try {
+      await apiKeys.deleteApiKey(keyId);
+      toast.success("API key deleted successfully!");
+      await loadApiKeys();
+    } catch (error: any) {
+      console.error("Error deleting API key:", error);
+      toast.error(error.response?.data?.error || "Failed to delete API key");
+    }
+  };
+
+  const handlePermissionChange = (
+    permission: ApiKeyPermission,
+    checked: boolean
+  ) => {
+    setCreateKeyForm((prev) => ({
+      ...prev,
+      permissions: checked
+        ? [...prev.permissions, permission]
+        : prev.permissions.filter((p) => p !== permission),
+    }));
+  };
+
+  const formatApiKeyDate = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getPermissionBadgeColor = (permission: ApiKeyPermission) => {
+    switch (permission) {
+      case ApiKeyPermission.READ:
+        return "bg-blue-100 text-blue-800";
+      case ApiKeyPermission.WRITE:
+        return "bg-green-100 text-green-800";
+      case ApiKeyPermission.ADMIN:
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
   // Show loading spinner while checking auth
@@ -598,6 +781,341 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* API Key Management */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                API Key Management
+              </CardTitle>
+              <CardDescription className="text-zinc-400">
+                Generate and manage API keys for MCP server authentication
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* API Key Stats */}
+                {apiKeyStats && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-zinc-800 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-zinc-300">
+                        Total Keys
+                      </div>
+                      <div className="text-2xl font-bold text-white">
+                        {apiKeyStats.totalKeys}
+                      </div>
+                    </div>
+                    <div className="bg-zinc-800 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-zinc-300">
+                        Active Keys
+                      </div>
+                      <div className="text-2xl font-bold text-green-400">
+                        {apiKeyStats.activeKeys}
+                      </div>
+                    </div>
+                    <div className="bg-zinc-800 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-zinc-300">
+                        Expired Keys
+                      </div>
+                      <div className="text-2xl font-bold text-red-400">
+                        {apiKeyStats.expiredKeys}
+                      </div>
+                    </div>
+                    <div className="bg-zinc-800 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-zinc-300">
+                        Total Usage
+                      </div>
+                      <div className="text-2xl font-bold text-blue-400">
+                        {apiKeyStats.totalUsage}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Create New API Key Button */}
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">
+                      Your API Keys
+                    </h3>
+                    <p className="text-sm text-zinc-400">
+                      API keys allow you to authenticate with the MCP server
+                    </p>
+                  </div>
+                  <Dialog
+                    open={createKeyDialog}
+                    onOpenChange={setCreateKeyDialog}
+                  >
+                    <DialogTrigger asChild>
+                      <Button className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create API Key
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-zinc-900 border-zinc-800">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">
+                          Create New API Key
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                          Create a new API key for MCP server authentication
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="key-name" className="text-zinc-300">
+                            Name
+                          </Label>
+                          <Input
+                            id="key-name"
+                            placeholder="e.g., MCP Production Key"
+                            value={createKeyForm.name}
+                            onChange={(e) =>
+                              setCreateKeyForm((prev) => ({
+                                ...prev,
+                                name: e.target.value,
+                              }))
+                            }
+                            className="bg-zinc-800 border-zinc-700 text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-zinc-300">Permissions</Label>
+                          <div className="space-y-2 mt-2">
+                            {availablePermissions.map((permission) => (
+                              <div
+                                key={permission.value}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={permission.value}
+                                  checked={createKeyForm.permissions.includes(
+                                    permission.value
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(
+                                      permission.value,
+                                      checked as boolean
+                                    )
+                                  }
+                                />
+                                <div className="flex-1">
+                                  <Label
+                                    htmlFor={permission.value}
+                                    className="text-zinc-300 font-medium"
+                                  >
+                                    {permission.label}
+                                  </Label>
+                                  <p className="text-sm text-zinc-400">
+                                    {permission.description}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="expires-at" className="text-zinc-300">
+                            Expiration Date (Optional)
+                          </Label>
+                          <Input
+                            id="expires-at"
+                            type="datetime-local"
+                            value={createKeyForm.expiresAt}
+                            onChange={(e) =>
+                              setCreateKeyForm((prev) => ({
+                                ...prev,
+                                expiresAt: e.target.value,
+                              }))
+                            }
+                            className="bg-zinc-800 border-zinc-700 text-white"
+                            min={new Date().toISOString().slice(0, 16)}
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setCreateKeyDialog(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button onClick={handleCreateApiKey}>
+                            Create API Key
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* API Keys List */}
+                <div className="space-y-3">
+                  {apiKeysLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+                      <p className="text-zinc-400">Loading API keys...</p>
+                    </div>
+                  ) : userApiKeys.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Key className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                      <p className="text-zinc-400">No API keys found</p>
+                      <p className="text-sm text-zinc-500 mt-1">
+                        Create your first API key to get started
+                      </p>
+                    </div>
+                  ) : (
+                    userApiKeys.map((key) => (
+                      <div
+                        key={key.id}
+                        className="bg-zinc-800 rounded-lg p-4 flex items-center justify-between"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-white font-medium">
+                              {key.name}
+                            </h4>
+                            <div className="flex gap-1">
+                              {key.permissions.map((permission) => (
+                                <Badge
+                                  key={permission}
+                                  className={`text-xs ${getPermissionBadgeColor(
+                                    permission
+                                  )}`}
+                                >
+                                  {permission}
+                                </Badge>
+                              ))}
+                            </div>
+                            {key.isExpired && (
+                              <Badge variant="destructive" className="text-xs">
+                                Expired
+                              </Badge>
+                            )}
+                            {!key.isActive && (
+                              <Badge variant="secondary" className="text-xs">
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-zinc-400 space-y-1">
+                            <p>Key: {key.keyPrefix}...</p>
+                            <p>Created: {formatApiKeyDate(key.createdAt)}</p>
+                            {key.expiresAt && (
+                              <p>Expires: {formatApiKeyDate(key.expiresAt)}</p>
+                            )}
+                            <p>Usage: {key.usageCount} requests</p>
+                            {key.lastUsedAt && (
+                              <p>
+                                Last used: {formatApiKeyDate(key.lastUsedAt)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingKey(key);
+                              setEditKeyDialog(true);
+                            }}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-white">
+                                  Delete API Key
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-zinc-400">
+                                  Are you sure you want to delete "{key.name}"?
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteApiKey(key.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Generated API Key Display */}
+          {generatedKey && (
+            <Dialog open={showGeneratedKey} onOpenChange={setShowGeneratedKey}>
+              <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogHeader>
+                  <DialogTitle className="text-white">
+                    API Key Created
+                  </DialogTitle>
+                  <DialogDescription className="text-zinc-400">
+                    Your API key has been created successfully. Make sure to
+                    copy it now as you won't be able to see it again.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-zinc-300">API Key</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        readOnly
+                        value={generatedKey.key}
+                        className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedKey.key);
+                          toast.success("API key copied to clipboard!");
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-3">
+                    <p className="text-yellow-400 text-sm">
+                      <strong>Important:</strong> This is the only time you'll
+                      see this API key. Make sure to copy and store it securely.
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => {
+                        setShowGeneratedKey(false);
+                        setGeneratedKey(null);
+                      }}
+                    >
+                      Got it
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {/* Application Information */}
           <Card className="bg-zinc-900 border-zinc-800">

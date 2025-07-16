@@ -1,5 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import { supabase } from "@/app/providers";
+import {
+  ApiKey,
+  CreateApiKeyRequest,
+  UpdateApiKeyRequest,
+  GeneratedApiKey,
+  ApiKeyStats,
+  ApiKeyPermissionInfo,
+} from "@/components/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -121,6 +129,56 @@ export const aiAssistance = {
       context,
     });
     return response.result;
+  },
+};
+
+// API Key Management interface
+export const apiKeys = {
+  async createApiKey(request: CreateApiKeyRequest): Promise<GeneratedApiKey> {
+    const response = await apiClient.post("/api-keys", request);
+    return response.data;
+  },
+
+  async getApiKeys(): Promise<ApiKey[]> {
+    const response = await apiClient.get("/api-keys");
+    return response.data;
+  },
+
+  async getApiKey(id: number): Promise<ApiKey> {
+    const response = await apiClient.get(`/api-keys/${id}`);
+    return response.data;
+  },
+
+  async updateApiKey(
+    id: number,
+    request: UpdateApiKeyRequest
+  ): Promise<ApiKey> {
+    const response = await apiClient.put(`/api-keys/${id}`, request);
+    return response.data;
+  },
+
+  async deleteApiKey(id: number): Promise<void> {
+    await apiClient.delete(`/api-keys/${id}`);
+  },
+
+  async getApiKeyStats(): Promise<ApiKeyStats> {
+    const response = await apiClient.get("/api-keys/stats");
+    return response.data;
+  },
+
+  async getApiKeyPermissions(): Promise<{
+    permissions: ApiKeyPermissionInfo[];
+  }> {
+    const response = await apiClient.get("/api-keys/permissions");
+    return response.data;
+  },
+
+  async cleanupExpiredKeys(): Promise<{
+    message: string;
+    deletedCount: number;
+  }> {
+    const response = await apiClient.post("/api-keys/cleanup");
+    return response.data;
   },
 };
 
