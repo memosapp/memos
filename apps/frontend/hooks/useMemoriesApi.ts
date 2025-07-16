@@ -13,7 +13,7 @@ import {
   setMemoriesSuccess,
   setMemoriesError,
   setMemoriesLoading,
-  setSelectedMemory,
+  setSelectedMemo,
   resetMemoriesState,
 } from "@/store/memoriesSlice";
 
@@ -124,34 +124,8 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
         const response = await apiClient.get(`/memo/${id}`);
         const memo = deserializeMemo(response.data);
 
-        // Convert to the format expected by the selectedMemory state
-        const selectedMemo = {
-          id: memo.id.toString(),
-          memory: memo.content,
-          metadata: {
-            summary: memo.summary,
-            importance: memo.importance,
-            authorRole: memo.authorRole,
-            sessionId: memo.sessionId,
-            userId: memo.userId,
-            createdAt:
-              typeof memo.createdAt === "string"
-                ? memo.createdAt
-                : memo.createdAt.toISOString(),
-            updatedAt:
-              typeof memo.updatedAt === "string"
-                ? memo.updatedAt
-                : memo.updatedAt.toISOString(),
-          },
-          tags: memo.tags || [],
-          created_at:
-            typeof memo.createdAt === "string"
-              ? new Date(memo.createdAt).getTime()
-              : memo.createdAt.getTime(),
-          state: "active" as const,
-        };
-
-        dispatch(setSelectedMemory(selectedMemo));
+        // Set the selected memo directly
+        dispatch(setSelectedMemo(memo));
         setIsLoading(false);
         return memo;
       } catch (err: any) {

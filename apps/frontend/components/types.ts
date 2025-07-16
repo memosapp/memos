@@ -104,14 +104,3 @@ export interface ApiKeyPermissionInfo {
   label: string;
   description: string;
 }
-
-// Legacy interface for backward compatibility - updated to match backend structure
-export interface Memory {
-  id: string;
-  memory: string;
-  metadata: any;
-  tags: string[]; // Tags for organizing memories
-  appName?: string;
-  created_at: number;
-  state: "active" | "paused" | "archived" | "deleted";
-}

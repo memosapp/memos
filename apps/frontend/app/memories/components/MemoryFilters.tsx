@@ -20,8 +20,8 @@ import { CreateMemoryDialog } from "@/app/memories/components/CreateMemoryDialog
 
 export function MemoryFilters() {
   const dispatch = useDispatch();
-  const selectedMemoryIds = useSelector(
-    (state: RootState) => state.memories.selectedMemoryIds
+  const selectedMemoIds = useSelector(
+    (state: RootState) => state.memories.selectedMemoIds
   );
   const { deleteMemo } = useMemoriesApi();
   const router = useRouter();
@@ -34,7 +34,9 @@ export function MemoryFilters() {
   const handleDeleteSelected = async () => {
     try {
       // Delete each selected memory
-      await Promise.all(selectedMemoryIds.map((id) => deleteMemo(id)));
+      await Promise.all(
+        selectedMemoIds.map((id: number) => deleteMemo(id.toString()))
+      );
       dispatch(clearSelection());
     } catch (error) {
       console.error("Failed to delete memories:", error);
@@ -128,11 +130,11 @@ export function MemoryFilters() {
       </div>
       <div className="flex gap-2">
         <CreateMemoryDialog />
-        {selectedMemoryIds.length > 0 && (
+        {selectedMemoIds.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="bg-zinc-900 text-zinc-300">
-                Actions ({selectedMemoryIds.length})
+                Actions ({selectedMemoIds.length})
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

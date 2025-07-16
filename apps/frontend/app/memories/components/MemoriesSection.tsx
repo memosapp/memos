@@ -31,7 +31,7 @@ export function MemoriesSection() {
   const { fetchMemos, searchMemos } = useMemoriesApi();
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const memories = useSelector((state: RootState) => state.memories.memories);
+  const memos = useSelector((state: RootState) => state.memories.memos);
 
   const currentPage = Number(searchParams.get("page")) || 1;
   const itemsPerPage = Number(searchParams.get("size")) || 10;

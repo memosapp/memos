@@ -18,19 +18,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { usePathname } from "next/navigation";
 import { aiAssistance } from "@/lib/api";
 
-interface UpdateMemoryProps {
-  memoryId: string;
-  memoryContent: string;
+interface UpdateMemoProps {
+  memoId: string;
+  memoContent: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const UpdateMemory = ({
-  memoryId,
-  memoryContent,
+const UpdateMemo = ({
+  memoId,
+  memoContent,
   open,
   onOpenChange,
-}: UpdateMemoryProps) => {
+}: UpdateMemoProps) => {
   const { updateMemo, isLoading, fetchMemos, fetchMemoById } = useMemoriesApi();
   const textRef = useRef<HTMLTextAreaElement>(null);
   const pathname = usePathname();
@@ -41,19 +41,19 @@ const UpdateMemory = ({
     generateContent: false,
   });
 
-  const handleUpdateMemory = async (text: string) => {
+  const handleUpdateMemo = async (text: string) => {
     try {
-      await updateMemo(memoryId, { content: text });
-      toast.success("Memory updated successfully");
+      await updateMemo(memoId, { content: text });
+      toast.success("Memo updated successfully");
       onOpenChange(false);
       if (pathname.includes("memories")) {
         await fetchMemos();
       } else {
-        await fetchMemoById(memoryId);
+        await fetchMemoById(memoId);
       }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update memory");
+      toast.error("Failed to update memo");
     }
   };
 
@@ -145,9 +145,9 @@ const UpdateMemory = ({
             </div>
             <Textarea
               ref={textRef}
-              id="memory"
+              id="memo"
               className="bg-zinc-950 border-zinc-800 min-h-[150px]"
-              defaultValue={memoryContent}
+              defaultValue={memoContent}
             />
           </div>
         </div>
@@ -158,7 +158,7 @@ const UpdateMemory = ({
           <Button
             className="w-[140px]"
             disabled={isLoading}
-            onClick={() => handleUpdateMemory(textRef?.current?.value || "")}
+            onClick={() => handleUpdateMemo(textRef?.current?.value || "")}
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -172,4 +172,4 @@ const UpdateMemory = ({
   );
 };
 
-export default UpdateMemory;
+export default UpdateMemo;

@@ -1,22 +1,24 @@
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/store/store';
-import { openUpdateMemoryDialog, closeUpdateMemoryDialog } from '@/store/uiSlice';
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/store/store";
+import { openUpdateMemoDialog, closeUpdateMemoDialog } from "@/store/uiSlice";
 
 export const useUI = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const updateMemoryDialog = useSelector((state: RootState) => state.ui.dialogs.updateMemory);
+  const updateMemoDialog = useSelector(
+    (state: RootState) => state.ui.dialogs.updateMemo
+  );
 
-  const handleOpenUpdateMemoryDialog = (memoryId: string, memoryContent: string) => {
-    dispatch(openUpdateMemoryDialog({ memoryId, memoryContent }));
+  const handleOpenUpdateMemoDialog = (memoId: string, memoContent: string) => {
+    dispatch(openUpdateMemoDialog({ memoId, memoContent }));
   };
 
-  const handleCloseUpdateMemoryDialog = () => {
-    dispatch(closeUpdateMemoryDialog());
+  const handleCloseUpdateMemoDialog = () => {
+    dispatch(closeUpdateMemoDialog());
   };
 
   return {
-    updateMemoryDialog,
-    handleOpenUpdateMemoryDialog,
-    handleCloseUpdateMemoryDialog,
+    updateMemoDialog,
+    handleOpenUpdateMemoDialog,
+    handleCloseUpdateMemoDialog,
   };
-}; 
+};

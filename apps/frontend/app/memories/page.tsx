@@ -5,13 +5,13 @@ import { MemoriesSection } from "@/app/memories/components/MemoriesSection";
 import { MemoryFilters } from "@/app/memories/components/MemoryFilters";
 import { useRouter, useSearchParams } from "next/navigation";
 import "@/styles/animation.css";
-import UpdateMemory from "@/components/shared/update-memory";
+import UpdateMemo from "@/components/shared/update-memory";
 import { useUI } from "@/hooks/useUI";
 
 export default function MemoriesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { updateMemoryDialog, handleCloseUpdateMemoryDialog } = useUI();
+  const { updateMemoDialog, handleCloseUpdateMemoDialog } = useUI();
   useEffect(() => {
     // Set default pagination values if not present in URL
     if (!searchParams.has("page") || !searchParams.has("size")) {
@@ -24,11 +24,11 @@ export default function MemoriesPage() {
 
   return (
     <div className="">
-      <UpdateMemory
-        memoryId={updateMemoryDialog.memoryId || ""}
-        memoryContent={updateMemoryDialog.memoryContent || ""}
-        open={updateMemoryDialog.isOpen}
-        onOpenChange={handleCloseUpdateMemoryDialog}
+      <UpdateMemo
+        memoId={updateMemoDialog.memoId || ""}
+        memoContent={updateMemoDialog.memoContent || ""}
+        open={updateMemoDialog.isOpen}
+        onOpenChange={handleCloseUpdateMemoDialog}
       />
       <main className="flex-1 py-6">
         <div className="container">

@@ -29,9 +29,9 @@ import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import {
-  selectMemory,
-  deselectMemory,
-  selectAllMemories,
+  selectMemo,
+  deselectMemo,
+  selectAllMemos,
   clearSelection,
 } from "@/store/memoriesSlice";
 
@@ -54,36 +54,36 @@ export function MemoryTable() {
   const { toast } = useToast();
   const router = useRouter();
   const dispatch = useDispatch();
-  const selectedMemoryIds = useSelector(
-    (state: RootState) => state.memories.selectedMemoryIds
+  const selectedMemoIds = useSelector(
+    (state: RootState) => state.memories.selectedMemoIds
   );
-  const memories = useSelector((state: RootState) => state.memories.memories);
+  const memos = useSelector((state: RootState) => state.memories.memos);
 
   const { deleteMemo, isLoading } = useMemoriesApi();
 
-  const handleDeleteMemory = async (id: string) => {
+  const handleDeleteMemo = async (id: string) => {
     await deleteMemo(id);
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      dispatch(selectAllMemories());
+      dispatch(selectAllMemos());
     } else {
       dispatch(clearSelection());
     }
   };
 
-  const handleSelectMemory = (id: string, checked: boolean) => {
+  const handleSelectMemo = (id: number, checked: boolean) => {
     if (checked) {
-      dispatch(selectMemory(id));
+      dispatch(selectMemo(id));
     } else {
-      dispatch(deselectMemory(id));
+      dispatch(deselectMemo(id));
     }
   };
-  const { handleOpenUpdateMemoryDialog } = useUI();
+  const { handleOpenUpdateMemoDialog } = useUI();
 
-  const handleEditMemory = (memory_id: string, memory_content: string) => {
-    handleOpenUpdateMemoryDialog(memory_id, memory_content);
+  const handleEditMemo = (memo_id: string, memo_content: string) => {
+    handleOpenUpdateMemoDialog(memo_id, memo_content);
   };
 
   const handleUpdateMemoryState = async (id: string, newState: string) => {
@@ -92,11 +92,11 @@ export function MemoryTable() {
   };
 
   const isAllSelected =
-    memories.length > 0 && selectedMemoryIds.length === memories.length;
+    memos.length > 0 && selectedMemoIds.length === memos.length;
   const isPartiallySelected =
-    selectedMemoryIds.length > 0 && selectedMemoryIds.length < memories.length;
+    selectedMemoIds.length > 0 && selectedMemoIds.length < memos.length;
 
-  const handleMemoryClick = (id: string) => {
+  const handleMemoClick = (id: number) => {
     router.push(`/memory/${id}`);
   };
 
@@ -157,88 +157,55 @@ export function MemoryTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {memories.map((memory) => (
+          {memos.map((memo) => (
             <TableRow
-              key={memory.id}
+              key={memo.id}
               className={`hover:bg-zinc-900/50 ${
-                memory.state === "paused" || memory.state === "archived"
-                  ? "text-zinc-400"
-                  : ""
-              } ${isLoading ? "animate-pulse opacity-50" : ""}`}
+                isLoading ? "animate-pulse opacity-50" : ""
+              }`}
             >
               <TableCell className="pl-4">
                 <Checkbox
                   className="data-[state=checked]:border-primary border-zinc-500/50"
-                  checked={selectedMemoryIds.includes(memory.id)}
+                  checked={selectedMemoIds.includes(memo.id)}
                   onCheckedChange={(checked) =>
-                    handleSelectMemory(memory.id, checked as boolean)
+                    handleSelectMemo(memo.id, checked as boolean)
                   }
                 />
               </TableCell>
               <TableCell className="">
-                {memory.state === "paused" || memory.state === "archived" ? (
-                  <TooltipProvider>
-                    <Tooltip delayDuration={0}>
-                      <TooltipTrigger asChild>
-                        <div
-                          onClick={() => handleMemoryClick(memory.id)}
-                          className={`font-medium ${
-                            memory.state === "paused" ||
-                            memory.state === "archived"
-                              ? "text-zinc-400"
-                              : "text-white"
-                          } cursor-pointer`}
-                        >
-                          {memory.memory}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          This memory is{" "}
-                          <span className="font-bold">
-                            {memory.state === "paused" ? "paused" : "archived"}
-                          </span>{" "}
-                          and <span className="font-bold">disabled</span>.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <div
-                    onClick={() => handleMemoryClick(memory.id)}
-                    className={`font-medium text-white cursor-pointer`}
-                  >
-                    {memory.memory}
-                  </div>
-                )}
+                <div
+                  onClick={() => handleMemoClick(memo.id)}
+                  className={`font-medium text-white cursor-pointer`}
+                >
+                  {memo.summary}
+                </div>
               </TableCell>
               <TableCell className="">
                 <div className="flex flex-wrap gap-1">
-                  <Tags
-                    tags={memory.tags}
-                    isPaused={
-                      memory.state === "paused" || memory.state === "archived"
-                    }
-                    concat={true}
-                  />
+                  <Tags tags={memo.tags || []} isPaused={false} concat={true} />
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
                 <div className="text-xs text-zinc-500 capitalize">
-                  {memory.metadata?.authorRole || "user"}
+                  {memo.authorRole || "user"}
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
-                {memory.appName ? (
+                {memo.appName ? (
                   <div className="text-xs text-green-600 capitalize">
-                    {memory.appName}
+                    {memo.appName}
                   </div>
                 ) : (
                   <div className="text-xs text-zinc-500">Manual</div>
                 )}
               </TableCell>
               <TableCell className="w-[140px] text-center">
-                {formatDate(memory.created_at)}
+                {formatDate(
+                  typeof memo.createdAt === "string"
+                    ? new Date(memo.createdAt).getTime()
+                    : memo.createdAt.getTime()
+                )}
               </TableCell>
               <TableCell className="text-right flex justify-center">
                 <DropdownMenu>
@@ -253,42 +220,9 @@ export function MemoryTable() {
                   >
                     <DropdownMenuItem
                       className="cursor-pointer"
-                      onClick={() => {
-                        const newState =
-                          memory.state === "active" ? "paused" : "active";
-                        handleUpdateMemoryState(memory.id, newState);
-                      }}
-                    >
-                      {memory?.state === "active" ? (
-                        <>
-                          <Pause className="mr-2 h-4 w-4" />
-                          Pause
-                        </>
-                      ) : (
-                        <>
-                          <Play className="mr-2 h-4 w-4" />
-                          Resume
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => {
-                        const newState =
-                          memory.state === "active" ? "archived" : "active";
-                        handleUpdateMemoryState(memory.id, newState);
-                      }}
-                    >
-                      <Archive className="mr-2 h-4 w-4" />
-                      {memory?.state !== "archived" ? (
-                        <>Archive</>
-                      ) : (
-                        <>Unarchive</>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => handleEditMemory(memory.id, memory.memory)}
+                      onClick={() =>
+                        handleEditMemo(memo.id.toString(), memo.content)
+                      }
                     >
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
@@ -296,7 +230,7 @@ export function MemoryTable() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="cursor-pointer text-red-500 focus:text-red-500"
-                      onClick={() => handleDeleteMemory(memory.id)}
+                      onClick={() => handleDeleteMemo(memo.id.toString())}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete
