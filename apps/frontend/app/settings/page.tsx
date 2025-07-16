@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   User,
   Mail,
@@ -26,6 +28,10 @@ import {
   XCircle,
   Copy,
   ExternalLink,
+  Edit2,
+  Save,
+  X,
+  Upload,
 } from "lucide-react";
 import { supabase } from "@/app/providers";
 import { Session } from "@supabase/supabase-js";
@@ -37,6 +43,11 @@ export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [signOutLoading, setSignOutLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("");
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -59,6 +70,12 @@ export default function SettingsPage() {
         // Update profile store with user data
         if (session?.user) {
           dispatch(setUser(session.user));
+          // Initialize form state
+          setDisplayName(
+            session.user.user_metadata?.name ||
+              session.user.user_metadata?.full_name ||
+              ""
+          );
         }
       } catch (error) {
         console.error("Error in getSession:", error);
@@ -110,6 +127,158 @@ export default function SettingsPage() {
     toast.success(`${label} copied to clipboard!`);
   };
 
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        // 2MB limit
+        toast.error("Avatar file must be less than 2MB");
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select a valid image file");
+        return;
+      }
+
+      setAvatarFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${session?.user?.id}/${Date.now()}.${fileExt}`;
+
+      // Remove old avatar if it exists
+      const oldAvatarUrl = session?.user?.user_metadata?.avatar_url;
+      if (oldAvatarUrl && oldAvatarUrl.includes("supabase")) {
+        try {
+          const urlParts = oldAvatarUrl.split("/");
+          const oldFileName = urlParts[urlParts.length - 1];
+          if (oldFileName) {
+            await supabase.storage
+              .from("avatars")
+              .remove([`${session?.user?.id}/${oldFileName}`]);
+          }
+        } catch (error) {
+          console.log("Could not remove old avatar:", error);
+        }
+      }
+
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (error) {
+        console.error("Error uploading avatar:", error);
+        return null;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      return null;
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!session?.user) return;
+
+    // Validate display name
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      toast.error("Display name cannot be empty");
+      return;
+    }
+
+    if (trimmedName.length < 2) {
+      toast.error("Display name must be at least 2 characters long");
+      return;
+    }
+
+    if (trimmedName.length > 50) {
+      toast.error("Display name must be less than 50 characters");
+      return;
+    }
+
+    setUpdateLoading(true);
+    try {
+      let avatarUrl = session.user.user_metadata?.avatar_url;
+
+      // Upload new avatar if selected
+      if (avatarFile) {
+        const uploadedUrl = await uploadAvatar(avatarFile);
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        } else {
+          toast.error("Failed to upload avatar");
+          setUpdateLoading(false);
+          return;
+        }
+      }
+
+      // Update user metadata
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          name: trimmedName,
+          full_name: trimmedName,
+          avatar_url: avatarUrl,
+        },
+      });
+
+      if (error) {
+        console.error("Error updating profile:", error);
+        toast.error("Failed to update profile");
+        return;
+      }
+
+      // Update local state
+      if (data.user) {
+        dispatch(setUser(data.user));
+        setSession((prev) => (prev ? { ...prev, user: data.user } : null));
+      }
+
+      // Reset form state
+      setIsEditing(false);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+
+      toast.success("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile");
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    // Reset form to original values
+    setDisplayName(
+      session?.user?.user_metadata?.name ||
+        session?.user?.user_metadata?.full_name ||
+        ""
+    );
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -157,57 +326,167 @@ export default function SettingsPage() {
           {/* Profile Overview */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Profile Overview
+              <CardTitle className="text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Profile Overview
+                </div>
+                {!isEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Edit Profile
+                  </Button>
+                )}
               </CardTitle>
               <CardDescription className="text-zinc-400">
                 Your account information and status
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage
-                    src={user.user_metadata?.avatar_url}
-                    alt={user.user_metadata?.name || user.email || "User"}
-                  />
-                  <AvatarFallback className="bg-zinc-700 text-white text-lg">
-                    {user.email ? getInitials(user.email) : "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-xl font-semibold text-white">
-                      {user.user_metadata?.name ||
-                        user.user_metadata?.full_name ||
-                        "User"}
-                    </h3>
-                    <Badge
-                      variant={
-                        user.email_confirmed_at ? "default" : "destructive"
-                      }
+              {!isEditing ? (
+                // View Mode
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage
+                      src={user.user_metadata?.avatar_url}
+                      alt={user.user_metadata?.name || user.email || "User"}
+                    />
+                    <AvatarFallback className="bg-zinc-700 text-white text-lg">
+                      {user.email ? getInitials(user.email) : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-xl font-semibold text-white">
+                        {user.user_metadata?.name ||
+                          user.user_metadata?.full_name ||
+                          "User"}
+                      </h3>
+                      <Badge
+                        variant={
+                          user.email_confirmed_at ? "default" : "destructive"
+                        }
+                      >
+                        {user.email_confirmed_at ? (
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                        ) : (
+                          <XCircle className="h-3 w-3 mr-1" />
+                        )}
+                        {user.email_confirmed_at ? "Verified" : "Unverified"}
+                      </Badge>
+                    </div>
+                    <p className="text-zinc-400 mb-4">{user.email}</p>
+                    <Button
+                      variant="destructive"
+                      onClick={handleSignOut}
+                      disabled={signOutLoading}
+                      className="flex items-center gap-2"
                     >
-                      {user.email_confirmed_at ? (
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                      ) : (
-                        <XCircle className="h-3 w-3 mr-1" />
-                      )}
-                      {user.email_confirmed_at ? "Verified" : "Unverified"}
-                    </Badge>
+                      <LogOut className="h-4 w-4" />
+                      {signOutLoading ? "Signing out..." : "Sign Out"}
+                    </Button>
                   </div>
-                  <p className="text-zinc-400 mb-4">{user.email}</p>
-                  <Button
-                    variant="destructive"
-                    onClick={handleSignOut}
-                    disabled={signOutLoading}
-                    className="flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    {signOutLoading ? "Signing out..." : "Sign Out"}
-                  </Button>
                 </div>
-              </div>
+              ) : (
+                // Edit Mode
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="relative">
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage
+                          src={avatarPreview || user.user_metadata?.avatar_url}
+                          alt={displayName || user.email || "User"}
+                        />
+                        <AvatarFallback className="bg-zinc-700 text-white text-lg">
+                          {user.email ? getInitials(user.email) : "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1">
+                        <label
+                          htmlFor="avatar-upload"
+                          className="cursor-pointer"
+                          title="Upload new avatar"
+                        >
+                          <div className="bg-blue-600 hover:bg-blue-700 p-1 rounded-full transition-colors">
+                            <Upload className="h-3 w-3 text-white" />
+                          </div>
+                          <input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      {avatarFile && (
+                        <p className="text-xs text-zinc-400 mt-2 text-center">
+                          Selected: {avatarFile.name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="space-y-4">
+                        <div>
+                          <Label
+                            htmlFor="display-name"
+                            className="text-zinc-300"
+                          >
+                            Display Name
+                          </Label>
+                          <Input
+                            id="display-name"
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            placeholder="Enter your display name"
+                            className="bg-zinc-800 border-zinc-700 text-white mt-1"
+                            maxLength={50}
+                          />
+                          <div className="flex justify-between items-center mt-1">
+                            <p className="text-xs text-zinc-500">
+                              2-50 characters
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              {displayName.length}/50
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-zinc-300">Email</Label>
+                          <p className="text-zinc-400 text-sm mt-1">
+                            {user.email} (cannot be changed)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-4">
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={updateLoading}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      {updateLoading ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                      disabled={updateLoading}
+                      className="flex items-center gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
