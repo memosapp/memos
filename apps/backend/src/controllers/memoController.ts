@@ -52,7 +52,7 @@ export const createMemo = async (
     const query = `
       INSERT INTO memos (session_id, user_id, content, summary, author_role, importance, tags, app_name, embedding)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
+      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
     `;
 
     const values = [
@@ -83,6 +83,7 @@ export const createMemo = async (
       appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      lastAccessedAt: row.last_accessed_at,
     };
 
     // Clear user's search cache since new memo was created
@@ -108,7 +109,7 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
     const { sessionId, limit = 50, offset = 0 } = req.query;
 
     let query = `
-      SELECT id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
+      SELECT id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
       FROM memos
       WHERE user_id = $1
     `;
@@ -138,6 +139,7 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
       appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      lastAccessedAt: row.last_accessed_at,
     }));
 
     res.json(memos);
@@ -167,12 +169,12 @@ export const getMemoById = async (
       return;
     }
 
-    // Get memo and increment access count, but only if it belongs to the authenticated user
+    // Get memo and increment access count + update last accessed time, but only if it belongs to the authenticated user
     const query = `
       UPDATE memos 
-      SET access_count = access_count + 1 
+      SET access_count = access_count + 1, last_accessed_at = NOW()
       WHERE id = $1 AND user_id = $2
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
+      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
     `;
 
     const result = await pool.query(query, [id, userId]);
@@ -196,6 +198,7 @@ export const getMemoById = async (
       appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      lastAccessedAt: row.last_accessed_at,
     };
 
     res.json(memo);
@@ -301,7 +304,7 @@ export const updateMemo = async (
       UPDATE memos 
       SET ${updateFields.join(", ")} 
       WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at
+      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
     `;
 
     const result = await pool.query(query, updateValues);
@@ -320,6 +323,7 @@ export const updateMemo = async (
       appName: row.app_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      lastAccessedAt: row.last_accessed_at,
     };
 
     // Clear user's search cache since memo was updated

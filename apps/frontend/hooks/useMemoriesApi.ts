@@ -45,12 +45,17 @@ const serializeMemo = (memo: Memo): Memo => ({
     typeof memo.updatedAt === "string"
       ? memo.updatedAt
       : memo.updatedAt.toISOString(),
+  lastAccessedAt:
+    typeof memo.lastAccessedAt === "string"
+      ? memo.lastAccessedAt
+      : memo.lastAccessedAt?.toISOString(),
 });
 
 const deserializeMemo = (memo: any): Memo => ({
   ...memo,
   createdAt: new Date(memo.createdAt),
   updatedAt: new Date(memo.updatedAt),
+  lastAccessedAt: new Date(memo.lastAccessedAt),
 });
 
 export const useMemoriesApi = (): UseMemoriesApiReturn => {

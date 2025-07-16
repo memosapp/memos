@@ -23,6 +23,7 @@ export interface Memo {
   appName?: string;
   createdAt: Date;
   updatedAt: Date;
+  lastAccessedAt?: Date;
 }
 
 export interface CreateMemoRequest {

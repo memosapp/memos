@@ -23,6 +23,7 @@ export interface Memo {
   appName?: string;
   createdAt: Date | string; // Allow both Date and string for flexibility
   updatedAt: Date | string; // Allow both Date and string for flexibility
+  lastAccessedAt?: Date | string; // Allow both Date and string for flexibility
 }
 
 export interface CreateMemoRequest {

@@ -27,6 +27,10 @@ const serializeMemo = (memo: Memo): Memo => ({
     typeof memo.updatedAt === "string"
       ? memo.updatedAt
       : memo.updatedAt.toISOString(),
+  lastAccessedAt:
+    typeof memo.lastAccessedAt === "string"
+      ? memo.lastAccessedAt
+      : memo.lastAccessedAt?.toISOString(),
 });
 
 export function MemoriesSection() {
