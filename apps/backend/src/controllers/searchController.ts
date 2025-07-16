@@ -84,7 +84,7 @@ export const searchMemos = async (
     let tagConditions = "";
     if (tags && tags.length > 0) {
       const tagMatches = tags
-        .map((_, i) => `array_to_string(tags, ' ') ILIKE $${4 + i}`)
+        .map((_, i) => `array_to_string(tags, ' ') ILIKE $${5 + i}`)
         .join(" OR ");
       tagConditions = `WHEN ${tagMatches} THEN 0.2`;
     } else {
@@ -96,9 +96,12 @@ export const searchMemos = async (
       SELECT 
         id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at,
         (
-          -- Keyword matching (30% weight)
+          -- Keyword matching (40% weight) - more strict matching
           CASE 
-            WHEN content ILIKE $1 OR summary ILIKE $1 THEN 0.3
+            -- Exact word match gets full points
+            WHEN content ~* ('\\y' || $3::text || '\\y') OR summary ~* ('\\y' || $3::text || '\\y') THEN 0.4
+            -- Partial match gets reduced points
+            WHEN content ILIKE $1 OR summary ILIKE $1 THEN 0.2
             ELSE 0
           END +
           
@@ -108,24 +111,36 @@ export const searchMemos = async (
             ELSE 0
           END +
           
-          -- Importance boost (20% weight)
-          (importance * 0.2) +
+          -- Vector similarity (30% weight) - only if similarity > 0.7
+          CASE 
+            WHEN (1 - (embedding <=> $2::vector)) > 0.7 THEN (1 - (embedding <=> $2::vector)) * 0.3
+            ELSE 0
+          END +
           
-          -- Vector similarity (30% weight)
-          (1 - (embedding <=> $2::vector)) * 0.3
+          -- Importance boost (10% weight) - reduced weight
+          (importance * 0.1)
           
-          ${includePopular ? "+ (access_count::float / 100.0) * 0.1" : ""}
+          ${includePopular ? "+ (access_count::float / 100.0) * 0.05" : ""}
         ) as relevance_score
       FROM memos
-      WHERE user_id = $3
+      WHERE user_id = $4
+    `;
+
+    // Add minimum relevance threshold as a subquery
+    searchQuery = `
+      SELECT * FROM (
+        ${searchQuery}
+      ) filtered_results
+      WHERE relevance_score >= 0.15
     `;
 
     const queryParams: any[] = [
       `%${query}%`,
       JSON.stringify(queryEmbedding),
+      query, // raw query for word boundary matching
       userId,
     ];
-    let paramIndex = 4;
+    let paramIndex = 5;
 
     // Add tag parameters
     if (tags && tags.length > 0) {
@@ -189,6 +204,24 @@ export const searchMemos = async (
     console.log("Search params:", queryParams);
 
     const result = await pool.query(searchQuery, queryParams);
+
+    console.log(
+      `Search completed: found ${result.rows.length} results for query "${query}"`
+    );
+
+    // Log relevance scores for debugging
+    if (result.rows.length > 0) {
+      const scores = result.rows
+        .map((row) => row.relevance_score)
+        .sort((a, b) => b - a);
+      console.log(
+        `Relevance scores: min=${scores[scores.length - 1]}, max=${
+          scores[0]
+        }, avg=${(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(
+          3
+        )}`
+      );
+    }
 
     const memos: Memo[] = result.rows.map((row) => ({
       id: row.id,
