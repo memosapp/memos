@@ -14,8 +14,8 @@ export interface Memo {
   importance?: number;
   accessCount?: number;
   tags?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string; // Allow both Date and string for flexibility
+  updatedAt: Date | string; // Allow both Date and string for flexibility
 }
 
 export interface CreateMemoRequest {

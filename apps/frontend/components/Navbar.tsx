@@ -5,15 +5,22 @@ import { HiHome, HiMiniRectangleStack } from "react-icons/hi2";
 import { RiApps2AddFill } from "react-icons/ri";
 import { FiRefreshCcw } from "react-icons/fi";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CreateMemoryDialog } from "@/app/memories/components/CreateMemoryDialog";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import Image from "next/image";
-import { Settings } from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
+import { supabase } from "@/app/providers";
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const memoriesApi = useMemoriesApi();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/signin");
+  };
 
   // Define route matchers with typed parameter extraction
   const routeBasedFetchMapping: {
@@ -118,6 +125,15 @@ export function Navbar() {
             Refresh
           </Button>
           <CreateMemoryDialog />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSignOut}
+            className="flex items-center gap-2 border-none text-zinc-300 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
       </div>
     </header>

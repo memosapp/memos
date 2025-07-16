@@ -37,6 +37,26 @@ export interface FetchMemosOptions {
   offset?: number;
 }
 
+// Helper function to convert Date objects to ISO strings for Redux serialization
+const serializeMemo = (memo: any): Memo => ({
+  ...memo,
+  createdAt:
+    memo.createdAt instanceof Date
+      ? memo.createdAt.toISOString()
+      : memo.createdAt,
+  updatedAt:
+    memo.updatedAt instanceof Date
+      ? memo.updatedAt.toISOString()
+      : memo.updatedAt,
+});
+
+// Helper function to convert API response to Date objects for return values
+const deserializeMemo = (memo: any): Memo => ({
+  ...memo,
+  createdAt: new Date(memo.createdAt),
+  updatedAt: new Date(memo.updatedAt),
+});
+
 export const useMemoriesApi = (): UseMemoriesApiReturn => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,11 +69,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
 
       try {
         const response = await axios.post(`${API_BASE_URL}/memo`, request);
-        const memo = response.data;
-
-        // Convert date strings to Date objects
-        memo.createdAt = new Date(memo.createdAt);
-        memo.updatedAt = new Date(memo.updatedAt);
+        const memo = deserializeMemo(response.data);
 
         setIsLoading(false);
         return memo;
@@ -84,13 +100,14 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
         const response = await axios.get(
           `${API_BASE_URL}/memos?${params.toString()}`
         );
-        const memos = response.data.map((memo: any) => ({
-          ...memo,
-          createdAt: new Date(memo.createdAt),
-          updatedAt: new Date(memo.updatedAt),
-        }));
 
-        dispatch(setMemoriesSuccess(memos));
+        // Serialize memos for Redux state (convert Date objects to ISO strings)
+        const serializedMemos = response.data.map(serializeMemo);
+
+        // Create memos with Date objects for return value
+        const memos = response.data.map(deserializeMemo);
+
+        dispatch(setMemoriesSuccess(serializedMemos));
         setIsLoading(false);
         return memos;
       } catch (err: any) {
@@ -112,11 +129,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
 
       try {
         const response = await axios.get(`${API_BASE_URL}/memo/${id}`);
-        const memo = response.data;
-
-        // Convert date strings to Date objects
-        memo.createdAt = new Date(memo.createdAt);
-        memo.updatedAt = new Date(memo.updatedAt);
+        const memo = deserializeMemo(response.data);
 
         // Convert to the format expected by the selectedMemory state
         const selectedMemo = {
@@ -128,9 +141,20 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
             authorRole: memo.authorRole,
             sessionId: memo.sessionId,
             userId: memo.userId,
+            createdAt:
+              typeof memo.createdAt === "string"
+                ? memo.createdAt
+                : memo.createdAt.toISOString(),
+            updatedAt:
+              typeof memo.updatedAt === "string"
+                ? memo.updatedAt
+                : memo.updatedAt.toISOString(),
           },
           tags: memo.tags || [],
-          created_at: memo.createdAt.getTime(),
+          created_at:
+            typeof memo.createdAt === "string"
+              ? new Date(memo.createdAt).getTime()
+              : memo.createdAt.getTime(),
           state: "active" as const,
         };
 
@@ -158,11 +182,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
           `${API_BASE_URL}/memo/${id}`,
           updates
         );
-        const memo = response.data;
-
-        // Convert date strings to Date objects
-        memo.createdAt = new Date(memo.createdAt);
-        memo.updatedAt = new Date(memo.updatedAt);
+        const memo = deserializeMemo(response.data);
 
         setIsLoading(false);
         return memo;
@@ -200,11 +220,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
 
       try {
         const response = await axios.post(`${API_BASE_URL}/search`, request);
-        const memos = response.data.map((memo: any) => ({
-          ...memo,
-          createdAt: new Date(memo.createdAt),
-          updatedAt: new Date(memo.updatedAt),
-        }));
+        const memos = response.data.map(deserializeMemo);
 
         setIsLoading(false);
         return memos;

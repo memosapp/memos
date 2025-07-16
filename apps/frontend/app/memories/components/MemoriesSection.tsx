@@ -12,6 +12,19 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store/store";
 import { setMemoriesSuccess } from "@/store/memoriesSlice";
 
+// Helper function to serialize memos for Redux state
+const serializeMemo = (memo: Memo): Memo => ({
+  ...memo,
+  createdAt:
+    memo.createdAt instanceof Date
+      ? memo.createdAt.toISOString()
+      : memo.createdAt,
+  updatedAt:
+    memo.updatedAt instanceof Date
+      ? memo.updatedAt.toISOString()
+      : memo.updatedAt,
+});
+
 export function MemoriesSection() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,8 +61,9 @@ export function MemoriesSection() {
           });
         }
 
-        // Dispatch to store so MemoryTable can access the data
-        dispatch(setMemoriesSuccess(result));
+        // Serialize memos before dispatching to Redux store
+        const serializedMemos = result.map(serializeMemo);
+        dispatch(setMemoriesSuccess(serializedMemos));
         setTotalItems(result.length); // For now, since backend doesn't return total count
       } catch (error) {
         console.error("Failed to fetch memos:", error);

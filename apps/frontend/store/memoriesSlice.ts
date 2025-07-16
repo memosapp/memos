@@ -62,26 +62,34 @@ const memoriesSlice = createSlice({
 
       // Check if it's the new Memo format or legacy Memory format
       if (action.payload.length > 0 && "sessionId" in action.payload[0]) {
-        // New Memo format
+        // New Memo format - dates should already be serialized as strings
         state.memos = action.payload as Memo[];
         // Convert all Memos to legacy Memory format for backward compatibility
-        state.memories = (action.payload as Memo[]).map((memo: Memo) => ({
-          id: memo.id.toString(),
-          memory: memo.content,
-          metadata: {
-            sessionId: memo.sessionId,
-            userId: memo.userId,
-            summary: memo.summary,
-            authorRole: memo.authorRole,
-            importance: memo.importance,
-            accessCount: memo.accessCount,
-            createdAt: memo.createdAt,
-            updatedAt: memo.updatedAt,
-          },
-          tags: memo.tags || [],
-          created_at: new Date(memo.createdAt).getTime(),
-          state: "active" as const,
-        }));
+        state.memories = (action.payload as Memo[]).map((memo: Memo) => {
+          // Handle both Date and string formats for createdAt
+          const createdAtDate =
+            typeof memo.createdAt === "string"
+              ? new Date(memo.createdAt)
+              : memo.createdAt;
+
+          return {
+            id: memo.id.toString(),
+            memory: memo.content,
+            metadata: {
+              sessionId: memo.sessionId,
+              userId: memo.userId,
+              summary: memo.summary,
+              authorRole: memo.authorRole,
+              importance: memo.importance,
+              accessCount: memo.accessCount,
+              createdAt: memo.createdAt, // Keep as string for serialization
+              updatedAt: memo.updatedAt, // Keep as string for serialization
+            },
+            tags: memo.tags || [],
+            created_at: createdAtDate.getTime(),
+            state: "active" as const,
+          };
+        });
       } else {
         // Legacy Memory format
         state.memories = action.payload as Memory[];
