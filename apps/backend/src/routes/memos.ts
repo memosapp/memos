@@ -6,13 +6,15 @@ import {
   updateMemo,
   deleteMemo,
 } from "../controllers/memoController";
+import { requireAuth } from "../middleware/auth";
 
 const router: Router = Router();
 
-router.post("/memo", createMemo);
-router.get("/memos", getMemos);
-router.get("/memo/:id", getMemoById);
-router.patch("/memo/:id", updateMemo);
-router.delete("/memo/:id", deleteMemo);
+// All memo routes require authentication
+router.post("/memo", requireAuth, createMemo);
+router.get("/memos", requireAuth, getMemos);
+router.get("/memo/:id", requireAuth, getMemoById);
+router.patch("/memo/:id", requireAuth, updateMemo);
+router.delete("/memo/:id", requireAuth, deleteMemo);
 
 export default router;

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Memo } from "@/components/types";
 import { formatDate } from "@/lib/helpers";
+import apiClient from "@/lib/api";
 import "@/styles/animation.css";
 
 export default function MemoryDetailPage() {
@@ -36,26 +37,19 @@ export default function MemoryDetailPage() {
     const fetchMemo = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-          }/memo/${memoId}`
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch memo: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const response = await apiClient.get(`/memo/${memoId}`);
+        const data = response.data;
 
         // Convert date strings to Date objects
         data.createdAt = new Date(data.createdAt);
         data.updatedAt = new Date(data.updatedAt);
 
         setMemo(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching memo:", err);
-        setError(err instanceof Error ? err.message : "Failed to load memo");
+        const errorMessage =
+          err.response?.data?.error || err.message || "Failed to load memo";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -200,7 +194,12 @@ export default function MemoryDetailPage() {
         <div className="mb-6 animate-fade-slide-down delay-1">
           <h1 className="text-3xl font-bold mb-2">Memory Detail</h1>
           <p className="text-muted-foreground">
-            Created {formatDate(memo.createdAt.getTime())}
+            Created{" "}
+            {formatDate(
+              memo.createdAt instanceof Date
+                ? memo.createdAt.getTime()
+                : new Date(memo.createdAt).getTime()
+            )}
           </p>
         </div>
 
@@ -226,7 +225,11 @@ export default function MemoryDetailPage() {
                 )}
                 <Badge variant="outline" className="gap-1">
                   <Calendar className="h-3 w-3" />
-                  {formatDate(memo.createdAt.getTime())}
+                  {formatDate(
+                    memo.createdAt instanceof Date
+                      ? memo.createdAt.getTime()
+                      : new Date(memo.createdAt).getTime()
+                  )}
                 </Badge>
                 <Badge variant="outline" className="gap-1">
                   <Eye className="h-3 w-3" />
@@ -345,7 +348,11 @@ export default function MemoryDetailPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Last Updated:</span>
                       <span className="text-sm text-muted-foreground">
-                        {formatDate(memo.updatedAt.getTime())}
+                        {formatDate(
+                          memo.updatedAt instanceof Date
+                            ? memo.updatedAt.getTime()
+                            : new Date(memo.updatedAt).getTime()
+                        )}
                       </span>
                     </div>
                   </div>

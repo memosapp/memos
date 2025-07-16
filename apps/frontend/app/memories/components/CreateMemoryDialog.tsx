@@ -1,17 +1,17 @@
 "use client";
 
+import { useState } from "react";
+import { useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -22,29 +22,44 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { useState, useRef } from "react";
-import { GoPlus } from "react-icons/go";
-import { Loader2, X } from "lucide-react";
+import { X, Plus, MessageSquare, Sparkles } from "lucide-react";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
-import { toast } from "sonner";
 import { AuthorRole } from "@/components/types";
-import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import { toast } from "sonner";
 
-export function CreateMemoryDialog() {
+interface CreateMemoryDialogProps {
+  trigger?: React.ReactNode;
+  defaultSessionId?: string;
+  defaultSummary?: string;
+  defaultContent?: string;
+  defaultTags?: string[];
+  defaultAuthorRole?: AuthorRole;
+  defaultImportance?: number;
+  onSuccess?: (memo: any) => void;
+}
+
+export function CreateMemoryDialog({
+  trigger,
+  defaultSessionId,
+  defaultSummary = "",
+  defaultContent = "",
+  defaultTags = [],
+  defaultAuthorRole = AuthorRole.USER,
+  defaultImportance = 0.5,
+  onSuccess,
+}: CreateMemoryDialogProps) {
   const { createMemo, isLoading } = useMemoriesApi();
   const [open, setOpen] = useState(false);
-  const userId = useSelector((state: RootState) => state.profile.userId);
 
-  // Form state
+  // Form state - remove userId from form data
   const [formData, setFormData] = useState({
-    sessionId: `session_${Date.now()}`,
-    userId: userId,
-    content: "",
-    summary: "",
-    authorRole: AuthorRole.USER,
-    importance: 1.0,
-    tags: [] as string[],
+    sessionId: defaultSessionId || `session_${Date.now()}`,
+    content: defaultContent,
+    summary: defaultSummary,
+    authorRole: defaultAuthorRole,
+    importance: defaultImportance,
+    tags: defaultTags,
   });
 
   const [newTag, setNewTag] = useState("");
@@ -75,13 +90,12 @@ export function CreateMemoryDialog() {
 
   const resetForm = () => {
     setFormData({
-      sessionId: `session_${Date.now()}`,
-      userId: userId,
-      content: "",
-      summary: "",
-      authorRole: AuthorRole.USER,
-      importance: 1.0,
-      tags: [],
+      sessionId: defaultSessionId || `session_${Date.now()}`,
+      content: defaultContent,
+      summary: defaultSummary,
+      authorRole: defaultAuthorRole,
+      importance: defaultImportance,
+      tags: defaultTags,
     });
     setNewTag("");
   };
@@ -93,9 +107,9 @@ export function CreateMemoryDialog() {
     }
 
     try {
+      // Remove userId from request - it will be handled by auth middleware
       const memoRequest = {
         sessionId: formData.sessionId,
-        userId: formData.userId,
         content: formData.content,
         summary: formData.summary || undefined,
         authorRole: formData.authorRole,
@@ -103,14 +117,18 @@ export function CreateMemoryDialog() {
         tags: formData.tags.length > 0 ? formData.tags : undefined,
       };
 
-      await createMemo(memoRequest);
+      const createdMemo = await createMemo(memoRequest);
 
       toast.success("Memory created successfully");
       setOpen(false);
       resetForm();
 
-      // Refresh the page to show the new memory
-      window.location.reload();
+      if (onSuccess) {
+        onSuccess(createdMemo);
+      } else {
+        // Refresh the page to show the new memory
+        window.location.reload();
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to create memory");
@@ -118,220 +136,175 @@ export function CreateMemoryDialog() {
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(newOpen) => {
-        setOpen(newOpen);
-        if (!newOpen) resetForm();
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-primary hover:bg-primary/90 text-white"
-        >
-          <GoPlus />
-          Create Memory
-        </Button>
+        {trigger || (
+          <Button className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Memory
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] bg-zinc-900 border-zinc-800 max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] bg-zinc-900 border-zinc-800">
         <DialogHeader>
-          <DialogTitle className="text-white">Create Memory</DialogTitle>
-          <DialogDescription className="text-zinc-400">
-            Add a new memory to your collection with all details
-          </DialogDescription>
+          <DialogTitle className="text-white flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Create New Memory
+          </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          {/* Session ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="session-id" className="text-white">
-              Session ID
-            </Label>
-            <Input
-              id="session-id"
-              value={formData.sessionId}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, sessionId: e.target.value }))
-              }
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
-              placeholder="Enter session ID"
-            />
-          </div>
-
-          {/* User ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="user-id" className="text-white">
-              User ID
-            </Label>
-            <Input
-              id="user-id"
-              value={formData.userId}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, userId: e.target.value }))
-              }
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
-              placeholder="Enter user ID"
-            />
-          </div>
-
+        <div className="space-y-6">
           {/* Content */}
-          <div className="grid gap-2">
-            <Label htmlFor="content" className="text-white">
+          <div className="space-y-2">
+            <Label
+              htmlFor="content"
+              className="text-zinc-300 flex items-center gap-2"
+            >
+              <MessageSquare className="h-4 w-4" />
               Content *
             </Label>
             <Textarea
               id="content"
+              placeholder="Enter your memory content..."
               value={formData.content}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, content: e.target.value }))
+                setFormData({ ...formData, content: e.target.value })
               }
-              placeholder="Enter your memory content here..."
-              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
-              rows={4}
+              className="min-h-[120px] bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
+              required
             />
           </div>
 
           {/* Summary */}
-          <div className="grid gap-2">
-            <Label htmlFor="summary" className="text-white">
-              Summary <span className="text-zinc-400">(optional)</span>
+          <div className="space-y-2">
+            <Label
+              htmlFor="summary"
+              className="text-zinc-300 flex items-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Summary
             </Label>
-            <Textarea
+            <Input
               id="summary"
+              placeholder="Optional summary..."
               value={formData.summary}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, summary: e.target.value }))
+                setFormData({ ...formData, summary: e.target.value })
               }
-              placeholder="Enter a brief summary of the memory..."
               className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
-              rows={2}
+            />
+          </div>
+
+          {/* Session ID */}
+          <div className="space-y-2">
+            <Label htmlFor="sessionId" className="text-zinc-300">
+              Session ID
+            </Label>
+            <Input
+              id="sessionId"
+              placeholder="Session identifier..."
+              value={formData.sessionId}
+              onChange={(e) =>
+                setFormData({ ...formData, sessionId: e.target.value })
+              }
+              className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
             />
           </div>
 
           {/* Author Role */}
-          <div className="grid gap-2">
-            <Label htmlFor="author-role" className="text-white">
-              Author Role
-            </Label>
+          <div className="space-y-2">
+            <Label className="text-zinc-300">Author Role</Label>
             <Select
               value={formData.authorRole}
               onValueChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  authorRole: value as AuthorRole,
-                }))
+                setFormData({ ...formData, authorRole: value as AuthorRole })
               }
             >
               <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                <SelectValue placeholder="Select author role" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-800 border-zinc-700">
-                <SelectItem value={AuthorRole.USER} className="text-white">
-                  User
-                </SelectItem>
-                <SelectItem value={AuthorRole.AGENT} className="text-white">
-                  Agent
-                </SelectItem>
-                <SelectItem value={AuthorRole.SYSTEM} className="text-white">
-                  System
-                </SelectItem>
+                <SelectItem value={AuthorRole.USER}>User</SelectItem>
+                <SelectItem value={AuthorRole.AGENT}>Agent</SelectItem>
+                <SelectItem value={AuthorRole.SYSTEM}>System</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Importance */}
-          <div className="grid gap-2">
-            <Label htmlFor="importance" className="text-white">
-              Importance: {formData.importance}
+          <div className="space-y-2">
+            <Label className="text-zinc-300">
+              Importance: {formData.importance.toFixed(2)}
             </Label>
             <Slider
-              id="importance"
-              min={0}
-              max={10}
-              step={0.1}
               value={[formData.importance]}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, importance: value[0] }))
+                setFormData({ ...formData, importance: value[0] })
               }
+              max={1}
+              min={0}
+              step={0.01}
               className="w-full"
             />
-            <div className="flex justify-between text-xs text-zinc-400">
-              <span>0 (Low)</span>
-              <span>10 (High)</span>
-            </div>
           </div>
 
           {/* Tags */}
-          <div className="grid gap-2">
-            <Label htmlFor="tags" className="text-white">
-              Tags <span className="text-zinc-400">(optional)</span>
-            </Label>
+          <div className="space-y-2">
+            <Label className="text-zinc-300">Tags</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {formData.tags.map((tag, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="ml-1 hover:text-red-400"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
             <div className="flex gap-2">
               <Input
-                id="tags"
+                placeholder="Add a tag..."
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Add a tag..."
                 className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
               />
               <Button
                 type="button"
-                variant="outline"
                 onClick={handleAddTag}
                 disabled={!newTag.trim()}
-                className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
+                className="shrink-0"
               >
-                Add
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {formData.tags.map((tag, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="bg-zinc-700 text-white hover:bg-zinc-600"
-                  >
-                    {tag}
-                    <button
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-1 hover:text-red-400"
-                    >
-                      <X size={12} />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="border-zinc-600 text-zinc-300 hover:bg-zinc-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateMemory}
+              disabled={isLoading || !formData.content.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isLoading ? "Creating..." : "Create Memory"}
+            </Button>
           </div>
         </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleCreateMemory}
-            disabled={isLoading}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              "Create Memory"
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

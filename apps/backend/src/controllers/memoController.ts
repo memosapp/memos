@@ -14,18 +14,25 @@ export const createMemo = async (
   res: Response
 ): Promise<void> => {
   try {
+    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const {
       sessionId,
-      userId, // TODO: Get userId from auth middleware instead of request body
       content,
       summary,
       authorRole,
       importance = 1.0,
       tags,
-    }: CreateMemoRequest = req.body;
+    }: Omit<CreateMemoRequest, "userId"> = req.body;
 
     // Validate required fields (sessionId is now optional)
-    if (!userId || !content || !authorRole) {
+    if (!content || !authorRole) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
@@ -83,20 +90,23 @@ export const createMemo = async (
 
 export const getMemos = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId, sessionId, limit = 50, offset = 0 } = req.query;
+    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
+    const { sessionId, limit = 50, offset = 0 } = req.query;
 
     let query = `
       SELECT id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
       FROM memos
-      WHERE 1=1
+      WHERE user_id = $1
     `;
-    const queryParams: any[] = [];
-    let paramIndex = 1;
-
-    if (userId) {
-      query += ` AND user_id = $${paramIndex++}`;
-      queryParams.push(userId);
-    }
+    const queryParams: any[] = [userId];
+    let paramIndex = 2;
 
     if (sessionId) {
       query += ` AND session_id = $${paramIndex++}`;
@@ -134,6 +144,14 @@ export const getMemoById = async (
   res: Response
 ): Promise<void> => {
   try {
+    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const { id } = req.params;
 
     if (!id || isNaN(Number(id))) {
@@ -141,15 +159,15 @@ export const getMemoById = async (
       return;
     }
 
-    // Get memo and increment access count
+    // Get memo and increment access count, but only if it belongs to the authenticated user
     const query = `
       UPDATE memos 
       SET access_count = access_count + 1 
-      WHERE id = $1 
+      WHERE id = $1 AND user_id = $2
       RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
     `;
 
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(query, [id, userId]);
 
     if (result.rows.length === 0) {
       res.status(404).json({ error: "Memo not found" });
@@ -183,6 +201,14 @@ export const updateMemo = async (
   res: Response
 ): Promise<void> => {
   try {
+    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const { id } = req.params;
     const updates: UpdateMemoRequest = req.body;
 
@@ -191,9 +217,10 @@ export const updateMemo = async (
       return;
     }
 
-    // Check if memo exists
-    const checkQuery = "SELECT content FROM memos WHERE id = $1";
-    const checkResult = await pool.query(checkQuery, [id]);
+    // Check if memo exists and belongs to the authenticated user
+    const checkQuery =
+      "SELECT content FROM memos WHERE id = $1 AND user_id = $2";
+    const checkResult = await pool.query(checkQuery, [id, userId]);
 
     if (checkResult.rows.length === 0) {
       res.status(404).json({ error: "Memo not found" });
@@ -210,10 +237,7 @@ export const updateMemo = async (
       updateValues.push(updates.sessionId);
     }
 
-    if (updates.userId) {
-      updateFields.push(`user_id = $${paramIndex++}`);
-      updateValues.push(updates.userId);
-    }
+    // Note: Don't allow updating userId - it should always be the authenticated user
 
     if (updates.content) {
       updateFields.push(`content = $${paramIndex++}`);
@@ -257,11 +281,12 @@ export const updateMemo = async (
     // Add updated_at
     updateFields.push(`updated_at = NOW()`);
     updateValues.push(id);
+    updateValues.push(userId);
 
     const query = `
       UPDATE memos 
       SET ${updateFields.join(", ")} 
-      WHERE id = $${paramIndex}
+      WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
       RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at
     `;
 
@@ -294,6 +319,14 @@ export const deleteMemo = async (
   res: Response
 ): Promise<void> => {
   try {
+    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const { id } = req.params;
 
     if (!id || isNaN(Number(id))) {
@@ -301,8 +334,10 @@ export const deleteMemo = async (
       return;
     }
 
-    const query = "DELETE FROM memos WHERE id = $1 RETURNING id";
-    const result = await pool.query(query, [id]);
+    // Delete memo only if it belongs to the authenticated user
+    const query =
+      "DELETE FROM memos WHERE id = $1 AND user_id = $2 RETURNING id";
+    const result = await pool.query(query, [id, userId]);
 
     if (result.rows.length === 0) {
       res.status(404).json({ error: "Memo not found" });

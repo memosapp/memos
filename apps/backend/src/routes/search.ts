@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { searchMemos } from "../controllers/searchController";
+import { requireAuth } from "../middleware/auth";
 
 const router: Router = Router();
 
-router.post("/search", searchMemos);
+// Search route requires authentication
+router.post("/search", requireAuth, searchMemos);
 
 export default router;

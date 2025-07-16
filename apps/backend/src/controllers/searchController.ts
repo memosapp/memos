@@ -9,9 +9,16 @@ export const searchMemos = async (
   res: Response
 ): Promise<void> => {
   try {
+    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
     const {
       query,
-      userId, // TODO: Get userId from auth middleware instead of request body
       sessionId,
       limit = 10,
       tags,
@@ -21,7 +28,7 @@ export const searchMemos = async (
       sortBy = "relevance",
       includePopular = false,
       dateRange,
-    }: SearchRequest = req.body;
+    }: Omit<SearchRequest, "userId"> = req.body;
 
     if (!query) {
       res.status(400).json({ error: "Search query is required" });
@@ -40,161 +47,104 @@ export const searchMemos = async (
       tagConditions = `WHEN ${tagMatches} THEN 0.9`;
     }
 
-    // Build enhanced search query with metadata-based scoring using CTE
+    // Build the complex search query with hybrid scoring
     let searchQuery = `
-      WITH scored_memos AS (
-        SELECT 
-          id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at,
-          -- Keyword scoring
-          (
-            CASE 
-              WHEN content ILIKE $1 THEN 1.0
-              WHEN summary ILIKE $1 THEN 0.8
-              ELSE 0.0
-            END
-          ) as keyword_score,
-          -- Semantic scoring
-          (1 - (embedding <=> $2)) as semantic_score,
-          -- Tag scoring
-          (
-            CASE 
-              WHEN tags IS NOT NULL AND array_length(tags, 1) > 0 THEN
-                CASE 
-                  WHEN array_to_string(tags, ' ') ILIKE $1 THEN 1.0
-                  ${tagConditions}
-                  ELSE 0.0
-                END
-              ELSE 0.0
-            END
-          ) as tag_score,
-          -- Author role scoring
-          (
-            CASE 
-              WHEN author_role = 'system' THEN 0.9
-              WHEN author_role = 'agent' THEN 0.8
-              WHEN author_role = 'user' THEN 0.7
-              ELSE 0.5
-            END
-          ) as author_score,
-          -- Importance scoring (normalized)
-          COALESCE(importance, 0.5) as importance_score,
-          -- Popularity scoring (normalized access count)
-          (
-            CASE 
-              WHEN access_count > 0 THEN LEAST(1.0, LOG(access_count + 1) / 5.0)
-              ELSE 0.1
-            END
-          ) as popularity_score,
-          -- Recency scoring (more recent = higher score)
-          (
-            CASE 
-              WHEN updated_at > NOW() - INTERVAL '1 day' THEN 1.0
-              WHEN updated_at > NOW() - INTERVAL '7 days' THEN 0.8
-              WHEN updated_at > NOW() - INTERVAL '30 days' THEN 0.6
-              WHEN updated_at > NOW() - INTERVAL '90 days' THEN 0.4
-              ELSE 0.2
-            END
-          ) as recency_score
-        FROM memos
-        WHERE 1=1
-      )
-      SELECT * FROM scored_memos
-      WHERE (keyword_score > 0 OR semantic_score > 0.7 OR tag_score > 0)
+      SELECT 
+        id, session_id, user_id, content, summary, author_role, importance, access_count, tags, created_at, updated_at,
+        (
+          -- Keyword matching (30% weight)
+          CASE 
+            WHEN content ILIKE $1 OR summary ILIKE $1 THEN 0.3
+            ELSE 0
+          END +
+          
+          -- Tag matching (20% weight)
+          CASE 
+            ${tagConditions}
+            ELSE 0
+          END +
+          
+          -- Importance boost (20% weight)
+          (importance * 0.2) +
+          
+          -- Vector similarity (30% weight)
+          (1 - (embedding <=> $2::vector)) * 0.3
+          
+          ${includePopular ? "+ (access_count::float / 100.0) * 0.1" : ""}
+        ) as relevance_score
+      FROM memos
+      WHERE user_id = $3
     `;
 
-    const searchParams: any[] = [`%${query}%`, JSON.stringify(queryEmbedding)];
-    let paramIndex = 3;
+    const queryParams: any[] = [
+      `%${query}%`,
+      JSON.stringify(queryEmbedding),
+      userId,
+    ];
+    let paramIndex = 4;
 
     // Add tag parameters
     if (tags && tags.length > 0) {
       tags.forEach((tag) => {
-        searchParams.push(`%${tag}%`);
-        paramIndex++;
+        queryParams.push(`%${tag}%`);
       });
+      paramIndex += tags.length;
     }
 
-    // Build additional filters for the outer query
-    let outerFilters = "";
-    if (userId) {
-      outerFilters += ` AND user_id = $${paramIndex++}`;
-      searchParams.push(userId);
-    }
-
+    // Add additional filters
     if (sessionId) {
-      outerFilters += ` AND session_id = $${paramIndex++}`;
-      searchParams.push(sessionId);
+      searchQuery += ` AND session_id = $${paramIndex++}`;
+      queryParams.push(sessionId);
     }
 
     if (authorRole) {
-      outerFilters += ` AND author_role = $${paramIndex++}`;
-      searchParams.push(authorRole);
+      searchQuery += ` AND author_role = $${paramIndex++}`;
+      queryParams.push(authorRole);
     }
 
     if (minImportance !== undefined) {
-      outerFilters += ` AND importance >= $${paramIndex++}`;
-      searchParams.push(minImportance);
+      searchQuery += ` AND importance >= $${paramIndex++}`;
+      queryParams.push(minImportance);
     }
 
     if (maxImportance !== undefined) {
-      outerFilters += ` AND importance <= $${paramIndex++}`;
-      searchParams.push(maxImportance);
+      searchQuery += ` AND importance <= $${paramIndex++}`;
+      queryParams.push(maxImportance);
     }
 
-    if (dateRange?.startDate) {
-      outerFilters += ` AND created_at >= $${paramIndex++}`;
-      searchParams.push(dateRange.startDate);
+    if (dateRange) {
+      if (dateRange.startDate) {
+        searchQuery += ` AND created_at >= $${paramIndex++}`;
+        queryParams.push(dateRange.startDate);
+      }
+      if (dateRange.endDate) {
+        searchQuery += ` AND created_at <= $${paramIndex++}`;
+        queryParams.push(dateRange.endDate);
+      }
     }
 
-    if (dateRange?.endDate) {
-      outerFilters += ` AND created_at <= $${paramIndex++}`;
-      searchParams.push(dateRange.endDate);
-    }
-
-    // Apply additional filters to the outer query
-    if (outerFilters) {
-      searchQuery = searchQuery.replace(
-        "WHERE (keyword_score > 0 OR semantic_score > 0.7 OR tag_score > 0)",
-        `WHERE (keyword_score > 0 OR semantic_score > 0.7 OR tag_score > 0)${outerFilters}`
-      );
-    }
-
-    // Add comprehensive scoring and sorting
+    // Add sorting
     switch (sortBy) {
-      case "relevance":
-        const popularityWeight = includePopular
-          ? "popularity_score * 0.05 +"
-          : "";
-        searchQuery += ` ORDER BY (
-          keyword_score * 0.25 + 
-          semantic_score * 0.35 + 
-          tag_score * 0.15 + 
-          importance_score * 0.1 + 
-          ${popularityWeight}
-          author_score * 0.05 + 
-          recency_score * 0.05
-        ) DESC`;
-        break;
-
       case "importance":
-        searchQuery += " ORDER BY importance DESC, updated_at DESC";
+        searchQuery += ` ORDER BY importance DESC, relevance_score DESC`;
         break;
-
       case "recency":
-        searchQuery += " ORDER BY updated_at DESC";
+        searchQuery += ` ORDER BY created_at DESC`;
         break;
-
       case "popularity":
-        searchQuery += " ORDER BY access_count DESC, updated_at DESC";
+        searchQuery += ` ORDER BY access_count DESC, relevance_score DESC`;
         break;
-
       default:
-        searchQuery += " ORDER BY updated_at DESC";
+        searchQuery += ` ORDER BY relevance_score DESC`;
     }
 
     searchQuery += ` LIMIT $${paramIndex}`;
-    searchParams.push(Number(limit));
+    queryParams.push(Number(limit));
 
-    const result = await pool.query(searchQuery, searchParams);
+    console.log("Search query:", searchQuery);
+    console.log("Search params:", queryParams);
+
+    const result = await pool.query(searchQuery, queryParams);
 
     const memos: Memo[] = result.rows.map((row) => ({
       id: row.id,

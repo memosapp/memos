@@ -16,6 +16,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { debounce } from "lodash";
 import { useEffect, useRef } from "react";
+import { CreateMemoryDialog } from "@/app/memories/components/CreateMemoryDialog";
 
 export function MemoryFilters() {
   const dispatch = useDispatch();
@@ -71,6 +72,7 @@ export function MemoryFilters() {
         />
       </div>
       <div className="flex gap-2">
+        <CreateMemoryDialog />
         {selectedMemoryIds.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

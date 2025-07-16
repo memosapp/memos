@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import axios from "axios";
+import apiClient from "@/lib/api";
 import {
   Memo,
   CreateMemoRequest,
@@ -17,40 +17,36 @@ import {
   resetMemoriesState,
 } from "@/store/memoriesSlice";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
 export interface UseMemoriesApiReturn {
-  createMemo: (request: CreateMemoRequest) => Promise<Memo>;
+  createMemo: (request: Omit<CreateMemoRequest, "userId">) => Promise<Memo>;
   fetchMemos: (options?: FetchMemosOptions) => Promise<Memo[]>;
   fetchMemoById: (id: string) => Promise<Memo>;
   updateMemo: (id: string, updates: UpdateMemoRequest) => Promise<Memo>;
   deleteMemo: (id: string) => Promise<void>;
-  searchMemos: (request: SearchRequest) => Promise<Memo[]>;
+  searchMemos: (request: Omit<SearchRequest, "userId">) => Promise<Memo[]>;
   isLoading: boolean;
   error: string | null;
 }
 
 export interface FetchMemosOptions {
-  userId?: string;
   sessionId?: string;
   limit?: number;
   offset?: number;
 }
 
-// Helper function to convert Date objects to ISO strings for Redux serialization
-const serializeMemo = (memo: any): Memo => ({
+// Utility functions to handle date serialization
+const serializeMemo = (memo: Memo): Memo => ({
   ...memo,
   createdAt:
-    memo.createdAt instanceof Date
-      ? memo.createdAt.toISOString()
-      : memo.createdAt,
+    typeof memo.createdAt === "string"
+      ? memo.createdAt
+      : memo.createdAt.toISOString(),
   updatedAt:
-    memo.updatedAt instanceof Date
-      ? memo.updatedAt.toISOString()
-      : memo.updatedAt,
+    typeof memo.updatedAt === "string"
+      ? memo.updatedAt
+      : memo.updatedAt.toISOString(),
 });
 
-// Helper function to convert API response to Date objects for return values
 const deserializeMemo = (memo: any): Memo => ({
   ...memo,
   createdAt: new Date(memo.createdAt),
@@ -63,12 +59,12 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
   const dispatch = useDispatch<AppDispatch>();
 
   const createMemo = useCallback(
-    async (request: CreateMemoRequest): Promise<Memo> => {
+    async (request: Omit<CreateMemoRequest, "userId">): Promise<Memo> => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await axios.post(`${API_BASE_URL}/memo`, request);
+        const response = await apiClient.post("/memo", request);
         const memo = deserializeMemo(response.data);
 
         setIsLoading(false);
@@ -92,14 +88,11 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
       try {
         const params = new URLSearchParams();
 
-        if (options.userId) params.append("userId", options.userId);
         if (options.sessionId) params.append("sessionId", options.sessionId);
         if (options.limit) params.append("limit", options.limit.toString());
         if (options.offset) params.append("offset", options.offset.toString());
 
-        const response = await axios.get(
-          `${API_BASE_URL}/memos?${params.toString()}`
-        );
+        const response = await apiClient.get(`/memos?${params.toString()}`);
 
         // Serialize memos for Redux state (convert Date objects to ISO strings)
         const serializedMemos = response.data.map(serializeMemo);
@@ -128,7 +121,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
       setError(null);
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/memo/${id}`);
+        const response = await apiClient.get(`/memo/${id}`);
         const memo = deserializeMemo(response.data);
 
         // Convert to the format expected by the selectedMemory state
@@ -178,10 +171,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
       setError(null);
 
       try {
-        const response = await axios.patch(
-          `${API_BASE_URL}/memo/${id}`,
-          updates
-        );
+        const response = await apiClient.patch(`/memo/${id}`, updates);
         const memo = deserializeMemo(response.data);
 
         setIsLoading(false);
@@ -202,7 +192,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
     setError(null);
 
     try {
-      await axios.delete(`${API_BASE_URL}/memo/${id}`);
+      await apiClient.delete(`/memo/${id}`);
       setIsLoading(false);
     } catch (err: any) {
       const errorMessage =
@@ -214,12 +204,12 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
   }, []);
 
   const searchMemos = useCallback(
-    async (request: SearchRequest): Promise<Memo[]> => {
+    async (request: Omit<SearchRequest, "userId">): Promise<Memo[]> => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await axios.post(`${API_BASE_URL}/search`, request);
+        const response = await apiClient.post("/search", request);
         const memos = response.data.map(deserializeMemo);
 
         setIsLoading(false);
