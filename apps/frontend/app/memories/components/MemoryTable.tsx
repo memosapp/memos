@@ -6,6 +6,8 @@ import {
   Archive,
   Play,
   Sparkles,
+  Clock,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,6 +151,18 @@ export function MemoryTable() {
                 Created On
               </div>
             </TableHead>
+            <TableHead className="w-[140px] border-zinc-700">
+              <div className="flex items-center w-full justify-center">
+                <Clock className="mr-1" size={16} />
+                Last Updated
+              </div>
+            </TableHead>
+            <TableHead className="w-[100px] border-zinc-700">
+              <div className="flex items-center w-full justify-center">
+                <Eye className="mr-1" size={16} />
+                Views
+              </div>
+            </TableHead>
             <TableHead className="text-right border-zinc-700 flex justify-center">
               <div className="flex items-center justify-end">
                 <MoreHorizontal className="h-4 w-4 mr-2" />
@@ -206,6 +220,20 @@ export function MemoryTable() {
                     ? new Date(memo.createdAt).getTime()
                     : memo.createdAt.getTime()
                 )}
+              </TableCell>
+              <TableCell className="w-[140px] text-center">
+                <div className="text-xs text-zinc-400">
+                  {formatDate(
+                    typeof memo.updatedAt === "string"
+                      ? new Date(memo.updatedAt).getTime()
+                      : memo.updatedAt.getTime()
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="w-[100px] text-center">
+                <div className="text-xs text-zinc-400">
+                  {memo.accessCount || 0}
+                </div>
               </TableCell>
               <TableCell className="text-right flex justify-center">
                 <DropdownMenu>

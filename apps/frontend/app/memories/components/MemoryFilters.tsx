@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { debounce } from "lodash";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CreateMemoryDialog } from "@/app/memories/components/CreateMemoryDialog";
+import { AdvancedMemoryFilters } from "@/app/memories/components/AdvancedMemoryFilters";
 
 export function MemoryFilters() {
   const dispatch = useDispatch();
@@ -112,43 +113,46 @@ export function MemoryFilters() {
   }, [handleSearch]);
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 mb-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-        <Input
-          ref={inputRef}
-          placeholder="Search memories... (min 2 characters)"
-          className="pl-8 bg-zinc-950 border-zinc-800 max-w-[500px]"
-          onChange={(e) => handleSearch(e.target.value)}
-          disabled={isSearching}
-        />
-        {isSearching && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-white"></div>
-          </div>
-        )}
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <Input
+            ref={inputRef}
+            placeholder="Search memories... (min 2 characters)"
+            className="pl-8 bg-zinc-950 border-zinc-800 max-w-[500px]"
+            onChange={(e) => handleSearch(e.target.value)}
+            disabled={isSearching}
+          />
+          {isSearching && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-white"></div>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <CreateMemoryDialog />
+          {selectedMemoIds.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="bg-zinc-900 text-zinc-300">
+                  Actions ({selectedMemoIds.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleDeleteSelected}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <FiTrash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
-      <div className="flex gap-2">
-        <CreateMemoryDialog />
-        {selectedMemoIds.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="bg-zinc-900 text-zinc-300">
-                Actions ({selectedMemoIds.length})
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={handleDeleteSelected}
-                className="text-red-600 hover:text-red-700"
-              >
-                <FiTrash2 className="mr-2 h-4 w-4" />
-                Delete Selected
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+      <AdvancedMemoryFilters />
     </div>
   );
 }
