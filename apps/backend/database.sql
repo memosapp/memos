@@ -18,6 +18,7 @@ CREATE TABLE memos (
     importance REAL DEFAULT 1.0,
     access_count INTEGER DEFAULT 0,
     tags TEXT[],
+    app_name TEXT, -- Source application that created this memo (e.g., Gemini, ChatGPT, Manual)
     embedding VECTOR(3072), -- Gemini embeddings are 3072 dimensions
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -31,6 +32,7 @@ CREATE INDEX idx_memos_created_at ON memos(created_at);
 CREATE INDEX idx_memos_updated_at ON memos(updated_at);
 CREATE INDEX idx_memos_importance ON memos(importance);
 CREATE INDEX idx_memos_tags ON memos USING GIN(tags);
+CREATE INDEX idx_memos_app_name ON memos(app_name) WHERE app_name IS NOT NULL;
 
 -- Create a vector index for semantic search
 -- Note: Vector indexes in pgvector are limited to 2000 dimensions
