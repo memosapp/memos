@@ -69,7 +69,7 @@ export default function SettingsPage() {
                     Backend API
                   </label>
                   <p className="text-white mt-1">
-                    {process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}
+                    {process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}
                   </p>
                 </div>
               </div>

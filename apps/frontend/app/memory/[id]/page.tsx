@@ -37,7 +37,9 @@ export default function MemoryDetailPage() {
       try {
         setLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/memo/${memoId}`
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+          }/memo/${memoId}`
         );
 
         if (!response.ok) {

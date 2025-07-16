@@ -14,7 +14,8 @@ A modern, AI-powered chat history storage and management system with semantic se
 - **📊 Vector Database**: PostgreSQL with pgvector for efficient semantic search
 - **🔗 MCP Integration**: Model Context Protocol server for AI tool integration
 - **⚡ Real-time**: Modern React frontend with real-time updates
-- **🐳 Docker Ready**: Containerized deployment for easy setup
+- **🐳 Docker Ready**: Full containerized development environment with hot reload
+- **🔄 Hot Reload**: All services support hot reload for rapid development
 
 ## 🛠️ Tech Stack
 
@@ -57,6 +58,55 @@ A modern, AI-powered chat history storage and management system with semantic se
 - Google Gemini AI API key
 
 ### Quick Start
+
+#### 🐳 Docker Setup (Recommended)
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd memos
+   ```
+
+2. **Configure environment variables**
+
+   ```bash
+   # Create backend environment file
+   echo "GEMINI_API_KEY=your_gemini_api_key_here" > apps/backend/.env
+   ```
+
+3. **Start all services with Docker**
+
+   ```bash
+   # Start all services (database, backend, frontend, MCP server)
+   ./start-dev.sh
+
+   # Or manually
+   docker-compose up -d
+   ```
+
+4. **Access the application**
+
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:3001
+   - MCP Server: http://localhost:3002
+   - Database: localhost:5432
+
+5. **Verify services are running**
+
+   ```bash
+   ./verify-ports.sh
+   ```
+
+6. **Stop services**
+
+   ```bash
+   ./stop-dev.sh
+   # Or manually
+   docker-compose down
+   ```
+
+#### 🔧 Manual Setup (Alternative)
 
 1. **Clone the repository**
 
@@ -121,8 +171,8 @@ A modern, AI-powered chat history storage and management system with semantic se
 
 6. **Access the application**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3000/api
-   - Health Check: http://localhost:3000/health
+   - Backend API: http://localhost:3001/api
+   - Health Check: http://localhost:3001/health
 
 ## 📁 Folder Structure
 
@@ -164,8 +214,11 @@ memos/
 ├── packages/
 │   └── shared/                  # Shared utilities & types
 │
-├── docker-compose.yml           # Database setup
+├── docker-compose.yml           # All services setup
 ├── setup-db.sh                 # Database setup script
+├── start-dev.sh                # Start development environment
+├── stop-dev.sh                 # Stop development environment
+├── verify-ports.sh             # Port verification script
 ├── pnpm-workspace.yaml         # Workspace configuration
 └── README.md                   # This file
 ```
@@ -173,6 +226,25 @@ memos/
 ## 🏃‍♂️ How to Run and Test
 
 ### Development Mode
+
+#### 🐳 Docker Development (Recommended)
+
+```bash
+# Start all services with hot reload
+./start-dev.sh
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+./stop-dev.sh
+
+# Rebuild specific service
+docker-compose build backend
+docker-compose up -d backend
+```
+
+#### 🔧 Manual Development
 
 ```bash
 # Start all services in development mode
@@ -200,10 +272,10 @@ cd apps/mcp && pnpm build
 
 ```bash
 # Health check
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 
 # Create a new memo
-curl -X POST http://localhost:3000/memo \
+curl -X POST http://localhost:3001/memo \
   -H "Content-Type: application/json" \
   -d '{
     "sessionId": "session_123",
@@ -214,7 +286,7 @@ curl -X POST http://localhost:3000/memo \
   }'
 
 # Search memos
-curl -X POST http://localhost:3000/search \
+curl -X POST http://localhost:3001/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "machine learning",
@@ -223,10 +295,10 @@ curl -X POST http://localhost:3000/search \
   }'
 
 # Get all memos
-curl http://localhost:3000/memos
+curl http://localhost:3001/memos
 
 # Get specific memo
-curl http://localhost:3000/memo/1
+curl http://localhost:3001/memo/1
 ```
 
 ### Database Management
@@ -250,7 +322,7 @@ docker-compose exec postgres psql -U memos_user -d memos
 ### Base URL
 
 ```
-http://localhost:3000
+http://localhost:3001
 ```
 
 ### Authentication
@@ -465,6 +537,21 @@ When reporting bugs or requesting features:
 ## 📄 License
 
 This project is licensed under the ISC License. See the LICENSE file for details.
+
+## 🌐 Service URLs
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **MCP Server**: http://localhost:3002
+- **Database**: localhost:5432
+
+## 🔍 Port Verification
+
+Run the verification script to check all services:
+
+```bash
+./verify-ports.sh
+```
 
 ## 🙏 Acknowledgments
 

@@ -6,8 +6,8 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import cors from "cors";
 
-// Backend API base URL
-const BACKEND_API_URL = "http://localhost:3000";
+// Backend API base URL - use environment variable for Docker compatibility
+const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
 
 // Types for API requests
 enum AuthorRole {
@@ -421,12 +421,8 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 });
 
 // Start the server
-const PORT = 3001; // Changed from 3000 to avoid conflicts with backend
-app.listen(PORT, (error) => {
-  if (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
+const PORT = 3002; // MCP server port
+app.listen(PORT, () => {
   console.log(`MCP Stateless Streamable HTTP Server listening on port ${PORT}`);
 });
 

@@ -1,6 +1,5 @@
-version: "3.8"
-
 services:
+  # Database service
   postgres:
     image: pgvector/pgvector:pg16
     container_name: memos-postgres
@@ -19,6 +18,79 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - memos-network
+
+  # Backend service
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    container_name: memos-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=memos
+      - DB_USER=memos_user
+      - DB_PASSWORD=memos_password
+    volumes:
+      - ./apps/backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - memos-network
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile.dev
+    container_name: memos-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - memos-network
+
+  # MCP service
+  mcp:
+    build:
+      context: ./apps/mcp
+      dockerfile: Dockerfile.dev
+    container_name: memos-mcp
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - BACKEND_API_URL=http://backend:3001
+    volumes:
+      - ./apps/mcp:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - memos-network
 
 volumes:
   postgres_data:
+
+networks:
+  memos-network:
+    driver: bridge
