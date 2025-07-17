@@ -357,17 +357,17 @@ Each component has environment-specific configurations:
 - `./stop-dev.sh` - Stop all services
 - `./verify-ports.sh` - Check service availability and Supabase connection
 
-### Supabase Migration Notes
+### Current Architecture
 
-The project has been migrated from self-managed PostgreSQL to Supabase:
+The project uses Supabase as the primary database and backend service:
 
-- ✅ **Schema Migration**: All tables and functions migrated to Supabase
-- ✅ **Automatic Embeddings**: Uses Supabase AI (gte-small) instead of Gemini API
-- ✅ **Edge Functions**: Deployed for background processing
+- ✅ **Schema**: All tables and functions hosted on Supabase
+- ✅ **AI Embeddings**: Uses Google Gemini API (gemini-embedding-001) with 1536 dimensions
+- ✅ **Manual Embedding Generation**: Immediate generation during memo operations
 - ✅ **RLS Policies**: Row Level Security implemented
-- ✅ **Docker Cleanup**: Removed PostgreSQL container and obsolete files
+- ✅ **Vector Search**: Enhanced hybrid search with semantic similarity thresholds
 
-**Cost Benefits**: 60-85% reduction in AI costs using Supabase's native embedding generation.
+**Benefits**: Direct control over embedding generation with improved semantic quality.
 
 ---
 

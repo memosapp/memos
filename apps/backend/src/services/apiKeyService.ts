@@ -10,9 +10,6 @@ import {
   ApiKeyPermission,
 } from "../types";
 
-// PostgreSQL array parsing is now handled automatically by type parsers
-// configured in src/config/types.ts
-
 const SALT_ROUNDS = 12;
 const KEY_LENGTH = 32; // 32 bytes = 256 bits
 

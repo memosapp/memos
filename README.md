@@ -11,7 +11,7 @@ A modern, AI-powered chat history storage and management system with semantic se
 - **🔍 Hybrid Search**: Combines keyword matching (30%) with semantic similarity (70%) for intelligent retrieval
 - **🤖 AI-Powered**: Leverages Google Gemini AI for generating high-quality text embeddings
 - **👥 Multi-User Support**: Handle multiple users and conversation sessions
-- **📊 Vector Database**: PostgreSQL with pgvector for efficient semantic search
+- **📊 Vector Database**: Supabase PostgreSQL with pgvector for efficient semantic search
 - **🔗 MCP Integration**: Model Context Protocol server for AI tool integration
 - **⚡ Real-time**: Modern React frontend with real-time updates
 - **🐳 Docker Ready**: Full containerized development environment with hot reload
@@ -23,9 +23,9 @@ A modern, AI-powered chat history storage and management system with semantic se
 
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL 16+ with pgvector extension
+- **Database**: Supabase PostgreSQL with pgvector extension
 - **AI Service**: Google Gemini AI (gemini-embedding-001)
-- **Vector Dimensions**: 3072-dimensional embeddings
+- **Vector Dimensions**: 1536-dimensional embeddings
 
 ### Frontend
 

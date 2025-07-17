@@ -22,7 +22,7 @@ A Node.js backend for the Memos project - an application for storing and managin
 ## Prerequisites
 
 1. **Node.js** (v18 or higher)
-2. **PostgreSQL** (v12 or higher) with pgvector extension
+2. **Supabase Project** with pgvector extension enabled
 3. **Google Gemini API key** - Get one from [Google AI Studio](https://makersuite.google.com/app/apikey)
 
 ## Installation
@@ -37,29 +37,18 @@ A Node.js backend for the Memos project - an application for storing and managin
    Create a `.env` file in the root directory:
 
    ```env
-   PORT=3000
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USER=your_db_user
-   DB_PASSWORD=your_db_password
-   DB_NAME=memos_db
+   PORT=3001
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
    GEMINI_API_KEY=your_gemini_api_key
    ```
 
 3. **Set up the database:**
 
    ```bash
-   # Create database
-   createdb memos_db
-
-   # Run the SQL setup (make sure pgvector is installed)
-   psql -d memos_db -f database.sql
-   ```
-
-4. **Install pgvector extension in PostgreSQL:**
-   ```sql
-   -- Connect to your database and run:
-   CREATE EXTENSION IF NOT EXISTS vector;
+   # Apply migrations to your Supabase project
+   npx supabase db push
    ```
 
 ## Development

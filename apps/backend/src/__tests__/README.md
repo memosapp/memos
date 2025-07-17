@@ -1,13 +1,10 @@
 # Backend Unit Tests
 
-This directory contains minimal unit tests for the Memos backend API endpoints.
+This directory previously contained unit tests for the Memos backend API endpoints. The tests were removed during project cleanup as they were outdated and referenced the old PostgreSQL-based architecture.
 
-## Test Files
+## Future Testing
 
-- `simple-test.ts` - Basic unit tests for core API functionality
-- `health.test.ts` - Health endpoint tests (requires Jest setup)
-- `memo.test.ts` - Memo endpoints tests (requires Jest setup)
-- `search.test.ts` - Search endpoints tests (requires Jest setup)
+New tests should be written to work with the current Supabase-based architecture:
 
 ## Running Tests
 

@@ -44,49 +44,28 @@ const columns = [
 
 export default function FilterComponent() {
   const dispatch = useDispatch();
-  const {
-    /* fetchMemories */
-  } = useMemoriesApi();
+  const memoriesApi = useMemoriesApi();
   const [isOpen, setIsOpen] = useState(false);
   const [tempSelectedApps, setTempSelectedApps] = useState<string[]>([]);
   const [tempSelectedTags, setTempSelectedTags] = useState<string[]>([]);
-
   const [showArchived, setShowArchived] = useState(false);
 
-  // Commented out selectors that use non-existent store slices
-  // const apps = useSelector((state: RootState) => state.apps.apps);
-  // const tags = useSelector(
-  //   (state: RootState) => state.filters.tags.items
-  // );
-  // const filters = useSelector((state: RootState) => state.filters.apps);
-
-  // Mock data to prevent errors
+  // TODO: Implement proper store slices for apps and filters
   const apps: any[] = [];
   const tags: any[] = [];
   const filters: any = { selectedTags: [], selectedApps: [] };
 
   useEffect(() => {
-    // fetchApps();
-    // fetchTags();
-  }, []);
-
-  useEffect(() => {
-    // Update temporary selections when filters change
     setTempSelectedApps(filters.selectedApps);
     setTempSelectedTags(filters.selectedTags);
   }, [filters]);
-
-  useEffect(() => {
-    // Clear filters on component mount
-    // handleClearFilters();
-  }, []);
 
   const handleClearFilters = async () => {
     setTempSelectedApps([]);
     setTempSelectedTags([]);
     setShowArchived(false);
-    // dispatch(clearFilters());
-    // await fetchMemories();
+    // TODO: Implement fetchMemories when available
+    // await memoriesApi.fetchMemories();
   };
 
   const toggleTagFilter = (tag: string) => {

@@ -1,30 +1,38 @@
-import { Pool } from "pg";
-import dotenv from "dotenv";
-import { initializeDynamicTypeParsers } from "./types";
+// Minimal database compatibility layer for legacy services using direct SQL
+// This provides the same interface as the old PostgreSQL pool but uses Supabase
+import { supabaseAdmin } from "./supabase";
 
-// Load environment variables
-dotenv.config();
+interface QueryResult {
+  rows: any[];
+  rowCount: number | null;
+}
 
-export const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "5432"),
-  database: process.env.DB_NAME || "memos_db",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "password",
-});
+// Compatibility interface for legacy pool.query() usage
+export const pool = {
+  async query(sql: string, params: any[] = []): Promise<QueryResult> {
+    try {
+      // Execute raw SQL via Supabase
+      const { data, error } = await supabaseAdmin.rpc("execute_sql", {
+        sql_query: sql,
+        params: params,
+      });
 
-// PostgreSQL database connection disabled - migrated to Supabase
-// Initialize PostgreSQL type parsers on startup
-// initializeDynamicTypeParsers(pool).catch((error) => {
-//   console.error("Failed to initialize PostgreSQL type parsers:", error);
-// });
+      if (error) {
+        throw error;
+      }
 
-// Graceful shutdown handler
+      return {
+        rows: data || [],
+        rowCount: data ? data.length : 0,
+      };
+    } catch (error) {
+      console.error("Database query error:", error);
+      throw error;
+    }
+  },
+};
+
+// Graceful shutdown handler (compatibility)
 export const closeDatabase = (): Promise<void> => {
-  return new Promise((resolve) => {
-    pool.end(() => {
-      console.log("Database connection closed");
-      resolve();
-    });
-  });
+  return Promise.resolve();
 };
