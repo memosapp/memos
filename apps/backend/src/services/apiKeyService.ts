@@ -318,13 +318,18 @@ export class ApiKeyService {
       }
 
       // Update with incremented count
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from("api_keys")
         .update({
           usage_count: (data.usage_count || 0) + 1,
           last_used_at: new Date().toISOString(),
         })
         .eq("id", keyId);
+
+      if (updateError) {
+        console.error("Error updating key usage:", updateError);
+        return;
+      }
     } catch (error) {
       console.error("Error updating key usage:", error);
       // Non-critical error, don't throw
