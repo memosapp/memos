@@ -63,10 +63,6 @@ import {
   Key,
   Plus,
   Trash2,
-  Eye,
-  EyeOff,
-  Settings,
-  Activity,
 } from "lucide-react";
 import { supabase } from "@/app/providers";
 import { Session } from "@supabase/supabase-js";
@@ -110,8 +106,6 @@ export default function SettingsPage() {
     permissions: [ApiKeyPermission.READ] as ApiKeyPermission[],
     expiresAt: "",
   });
-  const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
-  const [editKeyDialog, setEditKeyDialog] = useState(false);
 
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
@@ -422,8 +416,6 @@ export default function SettingsPage() {
       await apiKeys.updateApiKey(keyId, updates);
       toast.success("API key updated successfully!");
       await loadApiKeys();
-      setEditingKey(null);
-      setEditKeyDialog(false);
     } catch (error: any) {
       console.error("Error updating API key:", error);
       toast.error(error.response?.data?.error || "Failed to update API key");
@@ -1016,16 +1008,6 @@ export default function SettingsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingKey(key);
-                              setEditKeyDialog(true);
-                            }}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="destructive" size="sm">
