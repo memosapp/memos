@@ -89,7 +89,7 @@ export function MemoryFilters() {
   const debouncedSearch = useCallback(
     debounce((query: string) => {
       performSearch(query);
-    }, 300),
+    }, 1200),
     [performSearch]
   );
 
