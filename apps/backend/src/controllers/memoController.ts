@@ -1,15 +1,21 @@
 import { Request, Response } from "express";
-import { pool } from "../config/database";
-import { generateEmbedding } from "../services/embeddingService";
+import { supabase, supabaseAdmin } from "../config/supabase";
 import { formatTags, parseTags } from "../utils/tagUtils";
+import {
+  generateQueryEmbedding,
+  formatEmbeddingForPostgres,
+  regenerateAllMissingEmbeddings,
+} from "../services/embeddingService";
 import {
   AuthorRole,
   Memo,
   CreateMemoRequest,
   UpdateMemoRequest,
 } from "../types";
-import { clearUserCache } from "../services/searchCacheService";
 
+/**
+ * Create a new memo using Supabase with immediate embedding generation
+ */
 export const createMemo = async (
   req: Request,
   res: Response
@@ -33,7 +39,7 @@ export const createMemo = async (
       appName,
     }: Omit<CreateMemoRequest, "userId"> = req.body;
 
-    // Validate required fields (sessionId is now optional)
+    // Validate required fields
     if (!content || !authorRole) {
       res.status(400).json({ error: "Missing required fields" });
       return;
@@ -45,49 +51,60 @@ export const createMemo = async (
       return;
     }
 
-    // Generate embedding for the content
-    const embedding = await generateEmbedding(content);
+    // Generate embedding immediately using Gemini
+    console.log("Generating embedding for new memo...");
+    const embeddingContent = `${summary || ""} ${content}`.trim();
+    const embedding = await generateQueryEmbedding(embeddingContent);
 
-    // Insert memo into database
-    const query = `
-      INSERT INTO memos (session_id, user_id, content, summary, author_role, importance, tags, app_name, embedding)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
-    `;
+    if (!embedding) {
+      throw new Error("Failed to generate embedding");
+    }
 
-    const values = [
-      sessionId || null, // Allow null for optional sessionId
-      userId,
-      content,
-      summary || null,
-      authorRole,
-      importance,
-      formatTags(tags),
-      appName || null,
-      JSON.stringify(embedding),
-    ];
+    // Insert memo into Supabase with embedding
+    const { data, error } = await supabaseAdmin
+      .from("memos")
+      .insert({
+        session_id: sessionId || null,
+        user_id: userId,
+        content,
+        summary: summary || null,
+        author_role: authorRole,
+        importance,
+        tags: formatTags(tags),
+        app_name: appName || null,
+        embedding: embedding ? formatEmbeddingForPostgres(embedding) : null,
+      })
+      .select()
+      .single();
 
-    const result = await pool.query(query, values);
-    const row = result.rows[0];
+    if (error) {
+      console.error("Supabase insert error:", error);
+      res.status(500).json({ error: "Failed to create memo" });
+      return;
+    }
 
+    console.log(
+      `Successfully created memo ${data.id}${
+        embedding ? " with embedding" : " without embedding"
+      }`
+    );
+
+    // Convert response to our Memo type
     const memo: Memo = {
-      id: row.id,
-      sessionId: row.session_id,
-      userId: row.user_id,
-      content: row.content,
-      summary: row.summary,
-      authorRole: row.author_role,
-      importance: row.importance,
-      accessCount: row.access_count,
-      tags: parseTags(row.tags),
-      appName: row.app_name,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lastAccessedAt: row.last_accessed_at,
+      id: data.id,
+      sessionId: data.session_id,
+      userId: data.user_id,
+      content: data.content,
+      summary: data.summary,
+      authorRole: data.author_role as AuthorRole,
+      importance: data.importance,
+      accessCount: data.access_count,
+      tags: parseTags(data.tags),
+      appName: data.app_name,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      lastAccessedAt: data.last_accessed_at,
     };
-
-    // Clear user's search cache since new memo was created
-    clearUserCache(userId);
 
     res.status(201).json(memo);
   } catch (error) {
@@ -96,9 +113,11 @@ export const createMemo = async (
   }
 };
 
+/**
+ * Get memos for the authenticated user
+ */
 export const getMemos = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get userId from authenticated user (set by auth middleware)
     const userId = req.user?.id;
 
     if (!userId) {
@@ -106,33 +125,64 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { sessionId, limit = 50, offset = 0 } = req.query;
+    const {
+      sessionId,
+      limit = 50,
+      offset = 0,
+      tags,
+      authorRole,
+      minImportance,
+      maxImportance,
+    } = req.query;
 
-    let query = `
-      SELECT id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
-      FROM memos
-      WHERE user_id = $1
-    `;
-    const queryParams: any[] = [userId];
-    let paramIndex = 2;
+    // Build query
+    let query = supabaseAdmin
+      .from("memos")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false });
 
+    // Apply filters
     if (sessionId) {
-      query += ` AND session_id = $${paramIndex++}`;
-      queryParams.push(sessionId);
+      query = query.eq("session_id", sessionId);
     }
 
-    query += ` ORDER BY updated_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
-    queryParams.push(Number(limit), Number(offset));
+    if (authorRole) {
+      query = query.eq("author_role", authorRole);
+    }
 
-    const result = await pool.query(query, queryParams);
+    if (minImportance) {
+      query = query.gte("importance", Number(minImportance));
+    }
 
-    const memos: Memo[] = result.rows.map((row) => ({
+    if (maxImportance) {
+      query = query.lte("importance", Number(maxImportance));
+    }
+
+    if (tags && Array.isArray(tags)) {
+      // Filter by tags (contains any of the specified tags)
+      query = query.overlaps("tags", tags);
+    }
+
+    // Apply pagination
+    query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Supabase query error:", error);
+      res.status(500).json({ error: "Failed to fetch memos" });
+      return;
+    }
+
+    // Convert to our Memo type
+    const memos: Memo[] = data.map((row) => ({
       id: row.id,
       sessionId: row.session_id,
       userId: row.user_id,
       content: row.content,
       summary: row.summary,
-      authorRole: row.author_role,
+      authorRole: row.author_role as AuthorRole,
       importance: row.importance,
       accessCount: row.access_count,
       tags: parseTags(row.tags),
@@ -149,56 +199,66 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const getMemoById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * Get a single memo by ID
+ */
+export const getMemo = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get userId from authenticated user (set by auth middleware)
     const userId = req.user?.id;
+    const { id } = req.params;
 
     if (!userId) {
       res.status(401).json({ error: "Authentication required" });
       return;
     }
 
-    const { id } = req.params;
-
     if (!id || isNaN(Number(id))) {
       res.status(400).json({ error: "Invalid memo ID" });
       return;
     }
 
-    // Get memo and increment access count + update last accessed time, but only if it belongs to the authenticated user
-    const query = `
-      UPDATE memos 
-      SET access_count = access_count + 1, last_accessed_at = NOW()
-      WHERE id = $1 AND user_id = $2
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
-    `;
+    // Get memo and increment access count
+    const { data, error } = await supabaseAdmin
+      .from("memos")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single();
 
-    const result = await pool.query(query, [id, userId]);
-
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: "Memo not found" });
+    if (error) {
+      if (error.code === "PGRST116") {
+        res.status(404).json({ error: "Memo not found" });
+        return;
+      }
+      console.error("Supabase query error:", error);
+      res.status(500).json({ error: "Failed to fetch memo" });
       return;
     }
 
-    const row = result.rows[0];
+    // Update access count and last accessed time
+    await supabaseAdmin
+      .from("memos")
+      .update({
+        access_count: data.access_count + 1,
+        last_accessed_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    // Convert to our Memo type
     const memo: Memo = {
-      id: row.id,
-      sessionId: row.session_id,
-      userId: row.user_id,
-      content: row.content,
-      summary: row.summary,
-      authorRole: row.author_role,
-      importance: row.importance,
-      accessCount: row.access_count,
-      tags: parseTags(row.tags),
-      appName: row.app_name,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lastAccessedAt: row.last_accessed_at,
+      id: data.id,
+      sessionId: data.session_id,
+      userId: data.user_id,
+      content: data.content,
+      summary: data.summary,
+      authorRole: data.author_role as AuthorRole,
+      importance: data.importance,
+      accessCount: data.access_count + 1, // Return updated count
+      tags: parseTags(data.tags),
+      appName: data.app_name,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      lastAccessedAt: new Date(), // Return updated time
     };
 
     res.json(memo);
@@ -208,12 +268,14 @@ export const getMemoById = async (
   }
 };
 
-export const updateMemo = async (
+/**
+ * Search memos using improved hybrid search with RRF
+ */
+export const searchMemos = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    // Get userId from authenticated user (set by auth middleware)
     const userId = req.user?.id;
 
     if (!userId) {
@@ -221,113 +283,240 @@ export const updateMemo = async (
       return;
     }
 
+    const {
+      query,
+      limit = 10,
+      sessionId,
+      full_text_weight = 1.0,
+      semantic_weight = 1.0,
+      rrf_k = 50,
+    } = req.body;
+
+    if (!query) {
+      res.status(400).json({ error: "Search query is required" });
+      return;
+    }
+
+    console.log(`Searching for: "${query}" with hybrid search`);
+
+    // Generate embedding for the query using the same model as stored embeddings
+    const queryEmbedding = await generateQueryEmbedding(query);
+
+    if (!queryEmbedding) {
+      res.status(500).json({ error: "Failed to generate query embedding" });
+      return;
+    }
+
+    // Try to use the new hybrid search function if we have embeddings, otherwise fallback
+    try {
+      let data, error;
+
+      if (queryEmbedding) {
+        // Use the new hybrid search function with proper RRF and semantic threshold
+        console.log(
+          "Using advanced hybrid search with RRF and threshold filtering"
+        );
+        const result = await supabaseAdmin.rpc("search_memos_hybrid", {
+          query_text: query,
+          query_embedding: formatEmbeddingForPostgres(queryEmbedding),
+          user_id_param: userId,
+          match_count: Number(limit),
+          full_text_weight: Number(full_text_weight),
+          semantic_weight: Number(semantic_weight),
+          rrf_k: Number(rrf_k),
+          semantic_threshold: 0.7, // Filter out results with similarity < 70%
+        });
+        data = result.data;
+        error = result.error;
+      } else {
+        // Fallback to old search function
+        console.log("Using legacy search (no embeddings available)");
+        const result = await supabaseAdmin.rpc("search_memos", {
+          query_text: query,
+          user_id_param: userId,
+          similarity_threshold: 0.7,
+          limit_param: Number(limit),
+        });
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        console.error("Supabase search error:", error);
+        res.status(500).json({ error: "Search failed" });
+        return;
+      }
+
+      // Convert search results to our Memo type format
+      const memos: Memo[] = (data || []).map((row: any) => ({
+        id: row.id,
+        sessionId: row.session_id,
+        userId: row.user_id,
+        content: row.content,
+        summary: row.summary,
+        authorRole: row.author_role as AuthorRole,
+        importance: row.importance,
+        accessCount: row.access_count,
+        tags: parseTags(row.tags),
+        appName: row.app_name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        lastAccessedAt: row.last_accessed_at,
+        // Note: relevance_score and rank_explanation are available but not part of the Memo type
+      }));
+
+      console.log(
+        `Found ${memos.length} results for query: "${query}" using ${
+          queryEmbedding ? "hybrid" : "legacy"
+        } search`
+      );
+
+      res.json(memos);
+    } catch (searchError) {
+      console.error("Error with search:", searchError);
+      res.status(500).json({ error: "Search failed" });
+    }
+  } catch (error) {
+    console.error("Error searching memos:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * Update a memo with immediate embedding regeneration
+ */
+export const updateMemo = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
     const { id } = req.params;
     const updates: UpdateMemoRequest = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
 
     if (!id || isNaN(Number(id))) {
       res.status(400).json({ error: "Invalid memo ID" });
       return;
     }
 
-    // Check if memo exists and belongs to the authenticated user
-    const checkQuery =
-      "SELECT content FROM memos WHERE id = $1 AND user_id = $2";
-    const checkResult = await pool.query(checkQuery, [id, userId]);
+    // Get existing memo to check for content changes
+    const { data: existingMemo, error: checkError } = await supabaseAdmin
+      .from("memos")
+      .select("content, summary")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single();
 
-    if (checkResult.rows.length === 0) {
+    if (checkError || !existingMemo) {
       res.status(404).json({ error: "Memo not found" });
       return;
     }
 
-    // Build dynamic update query
-    const updateFields: string[] = [];
-    const updateValues: any[] = [];
-    let paramIndex = 1;
+    // Build update object
+    const updateData: any = {};
 
-    if (updates.sessionId) {
-      updateFields.push(`session_id = $${paramIndex++}`);
-      updateValues.push(updates.sessionId);
+    if (updates.sessionId !== undefined) {
+      updateData.session_id = updates.sessionId;
     }
 
-    // Note: Don't allow updating userId - it should always be the authenticated user
-
-    if (updates.content) {
-      updateFields.push(`content = $${paramIndex++}`);
-      updateValues.push(updates.content);
-
-      // Generate new embedding if content changed
-      const embedding = await generateEmbedding(updates.content);
-      updateFields.push(`embedding = $${paramIndex++}`);
-      updateValues.push(JSON.stringify(embedding));
+    if (updates.content !== undefined) {
+      updateData.content = updates.content;
     }
 
     if (updates.summary !== undefined) {
-      updateFields.push(`summary = $${paramIndex++}`);
-      updateValues.push(updates.summary);
+      updateData.summary = updates.summary;
     }
 
-    if (updates.authorRole) {
+    if (updates.authorRole !== undefined) {
       if (!Object.values(AuthorRole).includes(updates.authorRole)) {
         res.status(400).json({ error: "Invalid author role" });
         return;
       }
-      updateFields.push(`author_role = $${paramIndex++}`);
-      updateValues.push(updates.authorRole);
+      updateData.author_role = updates.authorRole;
     }
 
     if (updates.importance !== undefined) {
-      updateFields.push(`importance = $${paramIndex++}`);
-      updateValues.push(updates.importance);
+      updateData.importance = updates.importance;
     }
 
     if (updates.tags !== undefined) {
-      updateFields.push(`tags = $${paramIndex++}`);
-      updateValues.push(formatTags(updates.tags));
+      updateData.tags = formatTags(updates.tags);
     }
 
     if (updates.appName !== undefined) {
-      updateFields.push(`app_name = $${paramIndex++}`);
-      updateValues.push(updates.appName);
+      updateData.app_name = updates.appName;
     }
 
-    if (updateFields.length === 0) {
-      res.status(400).json({ error: "No fields to update" });
+    // Check if content or summary changed - if so, regenerate embedding
+    const contentChanged =
+      updates.content !== undefined && updates.content !== existingMemo.content;
+    const summaryChanged =
+      updates.summary !== undefined && updates.summary !== existingMemo.summary;
+
+    if (contentChanged || summaryChanged) {
+      console.log(`Regenerating embedding for updated memo ${id}...`);
+
+      // Get the new content for embedding
+      const newContent =
+        updates.content !== undefined ? updates.content : existingMemo.content;
+      const newSummary =
+        updates.summary !== undefined ? updates.summary : existingMemo.summary;
+      const embeddingContent = `${newSummary || ""} ${newContent}`.trim();
+
+      // Generate new embedding
+      const embedding = await generateQueryEmbedding(embeddingContent);
+
+      if (embedding) {
+        updateData.embedding = formatEmbeddingForPostgres(embedding);
+        console.log(`Generated new embedding for memo ${id}`);
+      } else {
+        console.warn(
+          `Failed to generate embedding for updated memo ${id}, keeping existing embedding`
+        );
+      }
+    }
+
+    // Perform update
+    const { data, error } = await supabaseAdmin
+      .from("memos")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase update error:", error);
+      res.status(500).json({ error: "Failed to update memo" });
       return;
     }
 
-    // Add updated_at
-    updateFields.push(`updated_at = NOW()`);
-    updateValues.push(id);
-    updateValues.push(userId);
+    console.log(
+      `Successfully updated memo ${data.id}${
+        contentChanged || summaryChanged ? " with new embedding" : ""
+      }`
+    );
 
-    const query = `
-      UPDATE memos 
-      SET ${updateFields.join(", ")} 
-      WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
-      RETURNING id, session_id, user_id, content, summary, author_role, importance, access_count, tags, app_name, created_at, updated_at, last_accessed_at
-    `;
-
-    const result = await pool.query(query, updateValues);
-    const row = result.rows[0];
-
+    // Convert to our Memo type
     const memo: Memo = {
-      id: row.id,
-      sessionId: row.session_id,
-      userId: row.user_id,
-      content: row.content,
-      summary: row.summary,
-      authorRole: row.author_role,
-      importance: row.importance,
-      accessCount: row.access_count,
-      tags: parseTags(row.tags),
-      appName: row.app_name,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lastAccessedAt: row.last_accessed_at,
+      id: data.id,
+      sessionId: data.session_id,
+      userId: data.user_id,
+      content: data.content,
+      summary: data.summary,
+      authorRole: data.author_role as AuthorRole,
+      importance: data.importance,
+      accessCount: data.access_count,
+      tags: parseTags(data.tags),
+      appName: data.app_name,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      lastAccessedAt: data.last_accessed_at,
     };
-
-    // Clear user's search cache since memo was updated
-    clearUserCache(userId);
 
     res.json(memo);
   } catch (error) {
@@ -336,12 +525,56 @@ export const updateMemo = async (
   }
 };
 
+/**
+ * Delete a memo
+ */
 export const deleteMemo = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    // Get userId from authenticated user (set by auth middleware)
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
+    if (!id || isNaN(Number(id))) {
+      res.status(400).json({ error: "Invalid memo ID" });
+      return;
+    }
+
+    // Delete memo (RLS will ensure user can only delete their own)
+    const { error } = await supabaseAdmin
+      .from("memos")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Supabase delete error:", error);
+      res.status(500).json({ error: "Failed to delete memo" });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting memo:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * Regenerate embeddings for all memos missing embeddings
+ * This is a maintenance endpoint to fix missing embeddings
+ */
+export const regenerateEmbeddings = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
     const userId = req.user?.id;
 
     if (!userId) {
@@ -349,29 +582,16 @@ export const deleteMemo = async (
       return;
     }
 
-    const { id } = req.params;
+    console.log(`User ${userId} triggered embedding regeneration`);
 
-    if (!id || isNaN(Number(id))) {
-      res.status(400).json({ error: "Invalid memo ID" });
-      return;
-    }
+    const result = await regenerateAllMissingEmbeddings();
 
-    // Delete memo only if it belongs to the authenticated user
-    const query =
-      "DELETE FROM memos WHERE id = $1 AND user_id = $2 RETURNING id";
-    const result = await pool.query(query, [id, userId]);
-
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: "Memo not found" });
-      return;
-    }
-
-    // Clear user's search cache since memo was deleted
-    clearUserCache(userId);
-
-    res.json({ message: "Memo deleted successfully" });
+    res.json({
+      message: "Embedding regeneration completed",
+      ...result,
+    });
   } catch (error) {
-    console.error("Error deleting memo:", error);
+    console.error("Error regenerating embeddings:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

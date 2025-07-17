@@ -216,10 +216,19 @@ CREATE OR REPLACE FUNCTION search_memos(
 )
 RETURNS TABLE (
   id int,
+  session_id text,
+  user_id text,
   content text,
   summary text,
-  relevance_score real,
-  created_at timestamptz
+  author_role public.author_role_enum,
+  importance real,
+  access_count int,
+  tags text[],
+  app_name text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  last_accessed_at timestamptz,
+  relevance_score real
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -228,8 +237,18 @@ BEGIN
   RETURN QUERY
   SELECT 
     m.id,
+    m.session_id,
+    m.user_id,
     m.content,
     m.summary,
+    m.author_role,
+    m.importance,
+    m.access_count,
+    m.tags,
+    m.app_name,
+    m.created_at,
+    m.updated_at,
+    m.last_accessed_at,
     (
       -- Text similarity (40% weight)
       CASE 
@@ -246,8 +265,7 @@ BEGIN
         ))) * 0.6)
         ELSE 0
       END
-    )::real as relevance_score,
-    m.created_at
+    )::real as relevance_score
   FROM public.memos m
   WHERE m.user_id = user_id_param
   AND (

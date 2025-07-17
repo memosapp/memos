@@ -15,6 +15,7 @@ if [ ! -f "apps/backend/.env" ]; then
     echo "   Required variables:"
     echo "   SUPABASE_URL=https://your-project.supabase.co"
     echo "   SUPABASE_KEY=your_anon_key_here"
+    echo "   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here"
     echo "   GEMINI_API_KEY=your_gemini_api_key_here (optional)"
     echo ""
     echo "💡 See SUPABASE_SETUP.md for detailed setup instructions"

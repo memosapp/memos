@@ -9,7 +9,6 @@ import authRouter from "./routes/auth";
 import aiRouter from "./routes/ai";
 import performanceRouter from "./routes/performance";
 import apiKeysRouter from "./routes/apiKeys";
-import supabaseTestRouter from "./routes/supabase-test";
 
 // Create Express app
 const app: Express = express();
@@ -26,6 +25,5 @@ app.use("/auth", authRouter);
 app.use("/", aiRouter);
 app.use("/", performanceRouter);
 app.use("/api-keys", apiKeysRouter);
-app.use("/", supabaseTestRouter);
 
 export default app;
