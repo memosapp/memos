@@ -13,10 +13,11 @@ export const pool = new Pool({
   password: process.env.DB_PASSWORD || "password",
 });
 
+// PostgreSQL database connection disabled - migrated to Supabase
 // Initialize PostgreSQL type parsers on startup
-initializeDynamicTypeParsers(pool).catch((error) => {
-  console.error("Failed to initialize PostgreSQL type parsers:", error);
-});
+// initializeDynamicTypeParsers(pool).catch((error) => {
+//   console.error("Failed to initialize PostgreSQL type parsers:", error);
+// });
 
 // Graceful shutdown handler
 export const closeDatabase = (): Promise<void> => {

@@ -1,5 +1,5 @@
 import app from "./app";
-import { closeDatabase } from "./config/database";
+// import { closeDatabase } from "./config/database"; // Disabled - using Supabase now
 
 const PORT = process.env.PORT || 3001;
 
@@ -18,7 +18,7 @@ process.on("SIGTERM", async () => {
   });
 
   // Close database connections
-  await closeDatabase();
+  // await closeDatabase(); // Disabled - using Supabase now
 
   process.exit(0);
 });
@@ -32,7 +32,7 @@ process.on("SIGINT", async () => {
   });
 
   // Close database connections
-  await closeDatabase();
+  // await closeDatabase(); // Disabled - using Supabase now
 
   process.exit(0);
 });

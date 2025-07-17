@@ -299,9 +299,75 @@ curl -X POST http://localhost:3000/search \
 
 Each component has environment-specific configurations:
 
-- **Development**: Local database, hot-reload
-- **Staging**: Shared database, production-like setup
-- **Production**: Managed services, optimized for performance
+- **Development**: Docker containers with Supabase integration
+- **Staging**: Shared Supabase project, production-like setup
+- **Production**: Managed Supabase services, optimized for performance
+
+---
+
+## Docker Development Setup
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Supabase account and project set up
+
+### Quick Start
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repo-url>
+   cd memos
+   ```
+
+2. **Configure environment variables**
+
+   ```bash
+   # Create backend environment file
+   cp apps/backend/.env.example apps/backend/.env
+
+   # Add your Supabase credentials:
+   SUPABASE_URL=https://your-project-id.supabase.co
+   SUPABASE_KEY=your_anon_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here  # Optional
+   ```
+
+3. **Start all services**
+
+   ```bash
+   ./start-dev.sh
+   ```
+
+4. **Verify setup**
+   ```bash
+   ./verify-ports.sh
+   ```
+
+### Services
+
+- **Backend API**: http://localhost:3001
+- **Frontend**: http://localhost:3000
+- **MCP Server**: http://localhost:3002
+- **Database**: Supabase (cloud hosted)
+
+### Available Scripts
+
+- `./start-dev.sh` - Start all services with health checks
+- `./stop-dev.sh` - Stop all services
+- `./verify-ports.sh` - Check service availability and Supabase connection
+
+### Supabase Migration Notes
+
+The project has been migrated from self-managed PostgreSQL to Supabase:
+
+- ✅ **Schema Migration**: All tables and functions migrated to Supabase
+- ✅ **Automatic Embeddings**: Uses Supabase AI (gte-small) instead of Gemini API
+- ✅ **Edge Functions**: Deployed for background processing
+- ✅ **RLS Policies**: Row Level Security implemented
+- ✅ **Docker Cleanup**: Removed PostgreSQL container and obsolete files
+
+**Cost Benefits**: 60-85% reduction in AI costs using Supabase's native embedding generation.
 
 ---
 

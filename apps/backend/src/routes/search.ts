@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { searchMemos } from "../controllers/searchController";
+import { searchMemos } from "../controllers/memoController.supabase";
 import { requireAuth } from "../middleware/auth";
 import { searchRateLimit } from "../middleware/rateLimiter";
 

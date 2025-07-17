@@ -1,10 +1,5 @@
 import { Request, Response } from "express";
-import { createClient } from "@supabase/supabase-js";
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || "";
-const supabaseKey = process.env.SUPABASE_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from "../config/supabase";
 
 export const signIn = async (req: Request, res: Response) => {
   const { email, password } = req.body;

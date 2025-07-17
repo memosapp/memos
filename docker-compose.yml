@@ -1,26 +1,4 @@
 services:
-  # Database service
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: memos-postgres
-    environment:
-      POSTGRES_DB: memos
-      POSTGRES_USER: memos_user
-      POSTGRES_PASSWORD: memos_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./apps/backend/database.sql:/docker-entrypoint-initdb.d/01-init.sql
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U memos_user -d memos"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - memos-network
-
   # Backend service
   backend:
     build:
@@ -29,23 +7,27 @@ services:
     container_name: memos-backend
     ports:
       - "3001:3001"
+    env_file:
+      - ./apps/backend/.env
     environment:
       - NODE_ENV=development
       - PORT=3001
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=memos
-      - DB_USER=memos_user
-      - DB_PASSWORD=memos_password
     volumes:
       - ./apps/backend:/app
       - /app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - memos-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Frontend service
   frontend:
@@ -63,7 +45,8 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - memos-network
@@ -83,13 +66,11 @@ services:
       - ./apps/mcp:/app
       - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - memos-network
-
-volumes:
-  postgres_data:
 
 networks:
   memos-network:

@@ -7,5 +7,5 @@ echo "🛑 Stopping Memos Development Environment..."
 docker-compose down
 
 echo "✅ All services stopped."
-echo "💾 Database data is preserved in docker volume 'postgres_data'"
-echo "🗑️  To remove all data, run: docker-compose down -v" 
+echo "☁️  Your Supabase data is safely stored in the cloud"
+echo "🗑️  To remove local Docker images: docker-compose down --rmi all" 

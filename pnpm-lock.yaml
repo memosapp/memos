@@ -18,7 +18,7 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0(@modelcontextprotocol/sdk@1.15.1)
       '@supabase/supabase-js':
-        specifier: ^2.39.3
+        specifier: ^2.51.0
         version: 2.51.0
       bcrypt:
         specifier: ^5.1.1
