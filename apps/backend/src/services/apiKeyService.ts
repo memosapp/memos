@@ -1,4 +1,4 @@
-import { pool } from "../config/database";
+import { supabaseAdmin } from "../config/supabase";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import {
@@ -66,40 +66,40 @@ export class ApiKeyService {
     const keyHash = await this.hashKey(key);
 
     try {
-      const query = `
-        INSERT INTO api_keys (user_id, name, key_hash, key_prefix, permissions, expires_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, user_id, name, key_prefix, permissions, expires_at, created_at
-      `;
+      const { data, error } = await supabaseAdmin
+        .from("api_keys")
+        .insert({
+          user_id: userId,
+          name,
+          key_hash: keyHash,
+          key_prefix: keyPrefix,
+          permissions,
+          expires_at: expiresAt || null,
+        })
+        .select(
+          "id, user_id, name, key_prefix, permissions, expires_at, created_at"
+        )
+        .single();
 
-      const values = [
-        userId,
-        name,
-        keyHash,
-        keyPrefix,
-        permissions,
-        expiresAt || null,
-      ];
-
-      const result = await pool.query(query, values);
-      const row = result.rows[0];
-
-      return {
-        id: row.id,
-        name: row.name,
-        key, // Return the plain text key only once
-        keyPrefix: row.key_prefix,
-        permissions: row.permissions,
-        expiresAt: row.expires_at,
-        createdAt: row.created_at,
-      };
-    } catch (error: any) {
-      if (error.code === "23505") {
-        // Unique constraint violation
-        if (error.constraint === "api_keys_user_id_name_unique") {
+      if (error) {
+        // Handle unique constraint violations
+        if (error.code === "23505") {
           throw new Error("An API key with this name already exists");
         }
+        throw error;
       }
+
+      return {
+        id: data.id,
+        name: data.name,
+        key, // Return the plain text key only once
+        keyPrefix: data.key_prefix,
+        permissions: data.permissions,
+        expiresAt: data.expires_at,
+        createdAt: data.created_at,
+      };
+    } catch (error: any) {
+      console.error("Error creating API key:", error);
       throw error;
     }
   }
@@ -108,14 +108,17 @@ export class ApiKeyService {
    * Get all API keys for a user (without sensitive data)
    */
   static async getUserApiKeys(userId: string): Promise<ApiKey[]> {
-    const query = `
-      SELECT * FROM api_keys_view 
-      WHERE user_id = $1 
-      ORDER BY created_at DESC
-    `;
+    const { data, error } = await supabaseAdmin
+      .from("api_keys_view")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-    const result = await pool.query(query, [userId]);
-    return result.rows.map((row) => ({
+    if (error) {
+      throw error;
+    }
+
+    return (data || []).map((row) => ({
       id: row.id,
       userId: row.user_id,
       name: row.name,
@@ -139,29 +142,35 @@ export class ApiKeyService {
     keyId: number,
     userId: string
   ): Promise<ApiKey | null> {
-    const query = `
-      SELECT * FROM api_keys_view 
-      WHERE id = $1 AND user_id = $2
-    `;
+    const { data, error } = await supabaseAdmin
+      .from("api_keys_view")
+      .select("*")
+      .eq("id", keyId)
+      .eq("user_id", userId)
+      .single();
 
-    const result = await pool.query(query, [keyId, userId]);
-    if (result.rows.length === 0) return null;
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows returned
+        return null;
+      }
+      throw error;
+    }
 
-    const row = result.rows[0];
     return {
-      id: row.id,
-      userId: row.user_id,
-      name: row.name,
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
       keyHash: "", // Never return the hash
-      keyPrefix: row.key_prefix,
-      permissions: row.permissions,
-      isActive: row.is_active,
-      lastUsedAt: row.last_used_at,
-      usageCount: row.usage_count,
-      expiresAt: row.expires_at,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      isExpired: row.is_expired,
+      keyPrefix: data.key_prefix,
+      permissions: data.permissions,
+      isActive: data.is_active,
+      lastUsedAt: data.last_used_at,
+      usageCount: data.usage_count,
+      expiresAt: data.expires_at,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      isExpired: data.is_expired,
     };
   }
 
@@ -185,56 +194,40 @@ export class ApiKeyService {
       }
     }
 
-    // Build dynamic update query
-    const updateFields = [];
-    const values = [];
-    let paramIndex = 1;
+    // Build update object with only defined fields
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (permissions !== undefined) updateData.permissions = permissions;
+    if (isActive !== undefined) updateData.is_active = isActive;
+    if (expiresAt !== undefined) updateData.expires_at = expiresAt;
 
-    if (name !== undefined) {
-      updateFields.push(`name = $${paramIndex++}`);
-      values.push(name);
-    }
-
-    if (permissions !== undefined) {
-      updateFields.push(`permissions = $${paramIndex++}`);
-      values.push(permissions);
-    }
-
-    if (isActive !== undefined) {
-      updateFields.push(`is_active = $${paramIndex++}`);
-      values.push(isActive);
-    }
-
-    if (expiresAt !== undefined) {
-      updateFields.push(`expires_at = $${paramIndex++}`);
-      values.push(expiresAt);
-    }
-
-    if (updateFields.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       throw new Error("No fields to update");
     }
 
-    values.push(keyId, userId);
-
-    const query = `
-      UPDATE api_keys 
-      SET ${updateFields.join(", ")}, updated_at = NOW()
-      WHERE id = $${paramIndex++} AND user_id = $${paramIndex++}
-      RETURNING id
-    `;
-
     try {
-      const result = await pool.query(query, values);
-      if (result.rows.length === 0) return null;
+      const { data, error } = await supabaseAdmin
+        .from("api_keys")
+        .update(updateData)
+        .eq("id", keyId)
+        .eq("user_id", userId)
+        .select("id")
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows returned
+          return null;
+        }
+        if (error.code === "23505") {
+          throw new Error("An API key with this name already exists");
+        }
+        throw error;
+      }
 
       return await this.getApiKeyById(keyId, userId);
     } catch (error: any) {
-      if (error.code === "23505") {
-        // Unique constraint violation
-        if (error.constraint === "api_keys_user_id_name_unique") {
-          throw new Error("An API key with this name already exists");
-        }
-      }
+      console.error("Error updating API key:", error);
       throw error;
     }
   }
@@ -243,13 +236,17 @@ export class ApiKeyService {
    * Delete an API key
    */
   static async deleteApiKey(keyId: number, userId: string): Promise<boolean> {
-    const query = `
-      DELETE FROM api_keys 
-      WHERE id = $1 AND user_id = $2
-    `;
+    const { error } = await supabaseAdmin
+      .from("api_keys")
+      .delete()
+      .eq("id", keyId)
+      .eq("user_id", userId);
 
-    const result = await pool.query(query, [keyId, userId]);
-    return result.rowCount !== null && result.rowCount > 0;
+    if (error) {
+      throw error;
+    }
+
+    return true;
   }
 
   /**
@@ -263,16 +260,19 @@ export class ApiKeyService {
     const keyPrefix = this.getKeyPrefix(apiKey);
 
     try {
-      const query = `
-        SELECT id, user_id, key_hash, permissions, is_active, expires_at
-        FROM api_keys 
-        WHERE key_prefix = $1 AND is_active = true
-      `;
+      const { data, error } = await supabaseAdmin
+        .from("api_keys")
+        .select("id, user_id, key_hash, permissions, is_active, expires_at")
+        .eq("key_prefix", keyPrefix)
+        .eq("is_active", true);
 
-      const result = await pool.query(query, [keyPrefix]);
+      if (error) {
+        console.error("Error fetching API keys:", error);
+        return { isValid: false };
+      }
 
       // Check all keys with this prefix (should be very few)
-      for (const row of result.rows) {
+      for (const row of data || []) {
         // Check if key is expired
         if (row.expires_at && new Date(row.expires_at) < new Date()) {
           continue;
@@ -304,22 +304,62 @@ export class ApiKeyService {
    * Update API key usage statistics
    */
   private static async updateKeyUsage(keyId: number): Promise<void> {
-    const query = `
-      UPDATE api_keys 
-      SET usage_count = usage_count + 1, last_used_at = NOW()
-      WHERE id = $1
-    `;
+    try {
+      // First get the current usage count
+      const { data, error: fetchError } = await supabaseAdmin
+        .from("api_keys")
+        .select("usage_count")
+        .eq("id", keyId)
+        .single();
 
-    await pool.query(query, [keyId]);
+      if (fetchError) {
+        console.error("Error fetching usage count:", fetchError);
+        return;
+      }
+
+      // Update with incremented count
+      await supabaseAdmin
+        .from("api_keys")
+        .update({
+          usage_count: (data.usage_count || 0) + 1,
+          last_used_at: new Date().toISOString(),
+        })
+        .eq("id", keyId);
+    } catch (error) {
+      console.error("Error updating key usage:", error);
+      // Non-critical error, don't throw
+    }
   }
 
   /**
    * Clean up expired API keys
    */
   static async cleanupExpiredKeys(): Promise<number> {
-    const query = `SELECT cleanup_expired_api_keys() as deleted_count`;
-    const result = await pool.query(query);
-    return result.rows[0].deleted_count;
+    try {
+      const { data, error } = await supabaseAdmin.rpc(
+        "cleanup_expired_api_keys"
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      return data || 0;
+    } catch (error) {
+      console.error("Error cleaning up expired keys:", error);
+      // Fallback to manual cleanup
+      const { error: deleteError } = await supabaseAdmin
+        .from("api_keys")
+        .delete()
+        .not("expires_at", "is", null)
+        .lt("expires_at", new Date().toISOString());
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      return 0; // Can't get exact count with fallback method
+    }
   }
 
   /**
@@ -331,24 +371,39 @@ export class ApiKeyService {
     expiredKeys: number;
     totalUsage: number;
   }> {
-    const query = `
-      SELECT 
-        COUNT(*) as total_keys,
-        COUNT(*) FILTER (WHERE is_active = true AND (expires_at IS NULL OR expires_at > NOW())) as active_keys,
-        COUNT(*) FILTER (WHERE expires_at IS NOT NULL AND expires_at < NOW()) as expired_keys,
-        COALESCE(SUM(usage_count), 0) as total_usage
-      FROM api_keys 
-      WHERE user_id = $1
-    `;
+    const { data, error } = await supabaseAdmin
+      .from("api_keys")
+      .select("is_active, expires_at, usage_count")
+      .eq("user_id", userId);
 
-    const result = await pool.query(query, [userId]);
-    const row = result.rows[0];
+    if (error) {
+      throw error;
+    }
+
+    const now = new Date();
+    let totalKeys = 0;
+    let activeKeys = 0;
+    let expiredKeys = 0;
+    let totalUsage = 0;
+
+    for (const key of data || []) {
+      totalKeys++;
+      totalUsage += key.usage_count || 0;
+
+      const isExpired = key.expires_at && new Date(key.expires_at) < now;
+
+      if (isExpired) {
+        expiredKeys++;
+      } else if (key.is_active) {
+        activeKeys++;
+      }
+    }
 
     return {
-      totalKeys: parseInt(row.total_keys),
-      activeKeys: parseInt(row.active_keys),
-      expiredKeys: parseInt(row.expired_keys),
-      totalUsage: parseInt(row.total_usage),
+      totalKeys,
+      activeKeys,
+      expiredKeys,
+      totalUsage,
     };
   }
 }
