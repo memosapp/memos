@@ -45,6 +45,7 @@ interface CreateMemoRequest {
   authorRole: AuthorRole;
   importance?: number;
   tags?: string[];
+  appName?: string;
 }
 
 interface SearchRequest {
@@ -203,6 +204,9 @@ This tool allows you to capture and persist important information, conversations
 - Record contextual information for future sessions
 - Archive meaningful interactions or learnings
 
+## Conversation Storage Guidelines:
+Store the full content of the most recent three conversation turns. Summarize all earlier chat history.
+
 ## Key Features:
 - **Semantic Search**: Content is automatically embedded for intelligent retrieval
 - **Flexible Tagging**: Add tags for easy categorization and filtering
@@ -234,7 +238,7 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
       content: z
         .string()
         .describe(
-          "The main textual content of the memo. This is the primary information that will be stored, embedded, and searched. Should be clear, concise, and contain the key information to be remembered."
+          "The main textual content of the memo. This is the primary information that will be stored, embedded, and searched. Should be clear, concise, and contain the key information to be remembered. For conversations: store the full content of the most recent three conversation turns and summarize all earlier chat history."
         ),
       summary: z
         .string()
@@ -263,6 +267,12 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
         .describe(
           "Array of descriptive tags for categorization and filtering. Use consistent, lowercase tags like ['user-preference', 'meeting-notes', 'bug-report'] for better organization and retrieval."
         ),
+      appName: z
+        .string()
+        .optional()
+        .describe(
+          "Optional name of the application or context creating this memo. This helps identify the source system or tool that generated the memo for better organization and filtering."
+        ),
     },
     async ({
       sessionId,
@@ -271,6 +281,7 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
       authorRole,
       importance,
       tags,
+      appName,
     }): Promise<CallToolResult> => {
       try {
         // Get user ID from authenticated request
@@ -284,6 +295,7 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
           authorRole: authorRole as AuthorRole,
           importance,
           tags,
+          appName,
         };
 
         const response = await fetch(`${BACKEND_API_URL}/memo`, {
@@ -308,15 +320,21 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
           ? `Session: ${createdMemo.sessionId}\n`
           : "";
 
+        const appInfo = createdMemo.appName
+          ? `App: ${createdMemo.appName}\n`
+          : "";
+
         return {
           content: [
             {
               type: "text",
               text: `Successfully created memo with ID: ${
                 createdMemo.id
-              }\n\n${sessionInfo}Content: ${createdMemo.content}\nAuthor: ${
-                createdMemo.authorRole
-              }\nImportance: ${createdMemo.importance}\nTags: ${
+              }\n\n${sessionInfo}${appInfo}Content: ${
+                createdMemo.content
+              }\nAuthor: ${createdMemo.authorRole}\nImportance: ${
+                createdMemo.importance
+              }\nTags: ${
                 createdMemo.tags?.join(", ") || "None"
               }\nCreated: ${new Date(createdMemo.createdAt).toLocaleString()}`,
             },
