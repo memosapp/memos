@@ -80,6 +80,18 @@ const memoriesSlice = createSlice({
     setRelatedMemos: (state, action: PayloadAction<Memo[]>) => {
       state.relatedMemos = action.payload;
     },
+    removeMemo: (state, action: PayloadAction<number>) => {
+      // Remove the memo from the memos array
+      state.memos = state.memos.filter((memo) => memo.id !== action.payload);
+      // Remove from selected memos if it was selected
+      state.selectedMemoIds = state.selectedMemoIds.filter(
+        (id) => id !== action.payload
+      );
+      // Clear selectedMemo if it's the one being deleted
+      if (state.selectedMemo && state.selectedMemo.id === action.payload) {
+        state.selectedMemo = null;
+      }
+    },
   },
 });
 
@@ -95,6 +107,7 @@ export const {
   setSelectedMemo,
   setAccessLogs,
   setRelatedMemos,
+  removeMemo,
 } = memoriesSlice.actions;
 
 export default memoriesSlice.reducer;

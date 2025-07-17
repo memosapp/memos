@@ -64,7 +64,21 @@ export function MemoryTable() {
   const { deleteMemo, isLoading } = useMemoriesApi();
 
   const handleDeleteMemo = async (id: string) => {
-    await deleteMemo(id);
+    try {
+      await deleteMemo(id);
+      toast({
+        title: "Success",
+        description: "Memory deleted successfully.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Failed to delete memory:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete memory. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSelectAll = (checked: boolean) => {

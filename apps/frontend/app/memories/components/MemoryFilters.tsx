@@ -18,6 +18,7 @@ import { debounce } from "lodash";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CreateMemoryDialog } from "@/app/memories/components/CreateMemoryDialog";
 import { AdvancedMemoryFilters } from "@/app/memories/components/AdvancedMemoryFilters";
+import { useToast } from "@/hooks/use-toast";
 
 export function MemoryFilters() {
   const dispatch = useDispatch();
@@ -27,6 +28,7 @@ export function MemoryFilters() {
   const { deleteMemo } = useMemoriesApi();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -38,9 +40,25 @@ export function MemoryFilters() {
       await Promise.all(
         selectedMemoIds.map((id: number) => deleteMemo(id.toString()))
       );
+
+      // Clear selection after successful deletion
       dispatch(clearSelection());
+
+      // Show success toast
+      toast({
+        title: "Success",
+        description: `Successfully deleted ${selectedMemoIds.length} ${
+          selectedMemoIds.length === 1 ? "memory" : "memories"
+        }.`,
+        variant: "default",
+      });
     } catch (error) {
       console.error("Failed to delete memories:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete selected memories. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

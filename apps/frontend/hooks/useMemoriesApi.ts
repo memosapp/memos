@@ -15,6 +15,7 @@ import {
   setMemoriesLoading,
   setSelectedMemo,
   resetMemoriesState,
+  removeMemo,
 } from "@/store/memoriesSlice";
 
 export interface UseMemoriesApiReturn {
@@ -166,21 +167,26 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
     []
   );
 
-  const deleteMemo = useCallback(async (id: string): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
+  const deleteMemo = useCallback(
+    async (id: string): Promise<void> => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      await apiClient.delete(`/memo/${id}`);
-      setIsLoading(false);
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.error || err.message || "Failed to delete memo";
-      setError(errorMessage);
-      setIsLoading(false);
-      throw new Error(errorMessage);
-    }
-  }, []);
+      try {
+        await apiClient.delete(`/memo/${id}`);
+        // Remove the memo from Redux state after successful deletion
+        dispatch(removeMemo(parseInt(id)));
+        setIsLoading(false);
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.error || err.message || "Failed to delete memo";
+        setError(errorMessage);
+        setIsLoading(false);
+        throw new Error(errorMessage);
+      }
+    },
+    [dispatch]
+  );
 
   const searchMemos = useCallback(
     async (request: Omit<SearchRequest, "userId">): Promise<Memo[]> => {
