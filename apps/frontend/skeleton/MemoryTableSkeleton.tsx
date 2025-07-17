@@ -77,7 +77,7 @@ export function MemoryTableSkeleton() {
           {Array.from({ length: 10 }).map((_, index) => (
             <TableRow
               key={index}
-              className="border-b border-zinc-800/50 animate-pulse"
+              className="hover:bg-zinc-800/40 border-b border-zinc-800/50 transition-colors duration-800 animate-pulse"
             >
               <TableCell className="pl-6">
                 <Checkbox className="border-zinc-500" disabled />
@@ -89,7 +89,7 @@ export function MemoryTableSkeleton() {
                 </div>
               </TableCell>
               <TableCell className="py-4">
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
                   <Skeleton className="h-5 w-12 rounded-full bg-zinc-800" />
                   <Skeleton className="h-5 w-16 rounded-full bg-zinc-800" />
                   <Skeleton className="h-5 w-10 rounded-full bg-zinc-800" />
@@ -97,28 +97,46 @@ export function MemoryTableSkeleton() {
               </TableCell>
               <TableCell className="w-[140px] text-center py-4">
                 <div className="flex items-center justify-center">
-                  <Skeleton className="h-6 w-16 rounded-full bg-zinc-800" />
+                  <div className="px-2 py-1 rounded-full bg-zinc-800/50 border border-zinc-700">
+                    <Skeleton className="h-3 w-8 bg-zinc-700" />
+                  </div>
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center py-4">
                 <div className="flex items-center justify-center">
-                  <Skeleton className="h-6 w-20 rounded-full bg-zinc-800" />
+                  {index % 3 === 0 ? (
+                    <div className="px-2 py-1 rounded-full bg-green-600/20 border border-green-600/30">
+                      <Skeleton className="h-3 w-12 bg-green-600/40" />
+                    </div>
+                  ) : (
+                    <div className="px-2 py-1 rounded-full bg-zinc-800/50 border border-zinc-700">
+                      <Skeleton className="h-3 w-12 bg-zinc-700" />
+                    </div>
+                  )}
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center py-4">
-                <Skeleton className="h-4 w-20 bg-zinc-800" />
+                <div className="text-xs text-zinc-400 font-mono">
+                  <Skeleton className="h-3 w-16 bg-zinc-800 mx-auto" />
+                </div>
               </TableCell>
               <TableCell className="w-[140px] text-center py-4">
-                <Skeleton className="h-4 w-20 bg-zinc-800" />
+                <div className="text-xs text-zinc-400 font-mono">
+                  <Skeleton className="h-3 w-16 bg-zinc-800 mx-auto" />
+                </div>
               </TableCell>
               <TableCell className="w-[100px] text-center py-4">
                 <div className="flex items-center justify-center">
-                  <Skeleton className="h-6 w-10 rounded-full bg-zinc-800" />
+                  <div className="px-2 py-1 rounded-full bg-blue-600/20 border border-blue-600/30 min-w-[40px]">
+                    <Skeleton className="h-3 w-4 bg-blue-600/40 mx-auto" />
+                  </div>
                 </div>
               </TableCell>
               <TableCell className="text-right py-4">
                 <div className="flex justify-center">
-                  <Skeleton className="h-8 w-8 rounded bg-zinc-800" />
+                  <div className="h-8 w-8 rounded bg-zinc-800/50 border border-zinc-700 flex items-center justify-center">
+                    <Skeleton className="h-4 w-4 bg-zinc-700" />
+                  </div>
                 </div>
               </TableCell>
             </TableRow>

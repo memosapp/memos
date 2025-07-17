@@ -288,6 +288,11 @@ Please provide an enhanced version that is more detailed, clear, and informative
               onChange={(e) =>
                 setFormData({ ...formData, content: e.target.value })
               }
+              disabled={
+                aiLoading.generateContent ||
+                aiLoading.generateSummary ||
+                aiLoading.generateTags
+              }
               className="min-h-[120px] bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
               required
             />
@@ -326,6 +331,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
               onChange={(e) =>
                 setFormData({ ...formData, summary: e.target.value })
               }
+              disabled={aiLoading.generateSummary}
               className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
             />
           </div>
@@ -427,12 +433,13 @@ Please provide an enhanced version that is more detailed, clear, and informative
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyPress={handleKeyPress}
+                disabled={aiLoading.generateTags}
                 className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-400"
               />
               <Button
                 type="button"
                 onClick={handleAddTag}
-                disabled={!newTag.trim()}
+                disabled={!newTag.trim() || aiLoading.generateTags}
                 className="shrink-0"
               >
                 <Plus className="h-4 w-4" />
