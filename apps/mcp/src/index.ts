@@ -271,7 +271,7 @@ Returns confirmation with memo ID, content summary, metadata, and timestamp for 
         .string()
         .optional()
         .describe(
-          "Optional name of the application or context creating this memo. This helps identify the source system or tool that generated the memo for better organization and filtering."
+          "Optional name of the application or context creating this memo. This helps identify the source system or tool that generated the memo for better organization and filtering. Examples: 'ChatGPT', 'OpenAI', 'Claude', 'Gemini', 'Qwen'."
         ),
     },
     async ({
