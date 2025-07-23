@@ -22,12 +22,21 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, MessageSquare, Sparkles, Wand2, Loader2 } from "lucide-react";
+import {
+  X,
+  Plus,
+  MessageSquare,
+  Sparkles,
+  Wand2,
+  Loader2,
+  FileText,
+  Upload,
+} from "lucide-react";
 import { useMemoriesApi } from "@/hooks/useMemoriesApi";
 import { AuthorRole } from "@/components/types";
 import { RootState } from "@/store/store";
 import { toast } from "sonner";
-import { aiAssistance } from "@/lib/api";
+import { aiAssistance, pdfProcessing } from "@/lib/api";
 
 interface CreateMemoryDialogProps {
   trigger?: React.ReactNode;
@@ -74,6 +83,12 @@ export function CreateMemoryDialog({
     generateContent: false,
   });
 
+  // PDF processing state
+  const [pdfState, setPdfState] = useState({
+    isProcessing: false,
+    selectedFile: null as File | null,
+  });
+
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
       setFormData((prev) => ({
@@ -109,6 +124,10 @@ export function CreateMemoryDialog({
       appName: undefined,
     });
     setNewTag("");
+    setPdfState({
+      isProcessing: false,
+      selectedFile: null,
+    });
   };
 
   // AI assistance handlers
@@ -194,6 +213,61 @@ Please provide an enhanced version that is more detailed, clear, and informative
     }
   };
 
+  // PDF processing handlers
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== "application/pdf") {
+        toast.error("Only PDF files are supported");
+        return;
+      }
+
+      if (file.size > 20 * 1024 * 1024) {
+        // 20MB limit
+        toast.error("PDF file size must be less than 20MB");
+        return;
+      }
+
+      setPdfState((prev) => ({ ...prev, selectedFile: file }));
+    }
+  };
+
+  const handleProcessPDF = async () => {
+    if (!pdfState.selectedFile) {
+      toast.error("Please select a PDF file first");
+      return;
+    }
+
+    setPdfState((prev) => ({ ...prev, isProcessing: true }));
+
+    try {
+      const result = await pdfProcessing.processPDF(pdfState.selectedFile);
+
+      // Auto-populate form fields with extracted content
+      setFormData((prev) => ({
+        ...prev,
+        content: result.content,
+        summary: result.summary || prev.summary,
+        tags: result.tags
+          ? [...new Set([...prev.tags, ...result.tags])]
+          : prev.tags,
+        appName: result.appName,
+      }));
+
+      toast.success(`Successfully extracted content from ${result.filename}`);
+
+      // Clear the selected file
+      setPdfState((prev) => ({ ...prev, selectedFile: null }));
+    } catch (error: any) {
+      console.error("Error processing PDF:", error);
+      toast.error(
+        error.response?.data?.error || error.message || "Failed to process PDF"
+      );
+    } finally {
+      setPdfState((prev) => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   const handleCreateMemory = async () => {
     if (!formData.content.trim()) {
       toast.error("Please enter some content");
@@ -248,6 +322,60 @@ Please provide an enhanced version that is more detailed, clear, and informative
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-6">
+          {/* PDF Upload */}
+          <div className="space-y-3 p-4 border border-zinc-700 rounded-lg bg-zinc-800/50">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4 text-blue-400" />
+              <Label className="text-zinc-300 font-medium">
+                Upload PDF Document
+              </Label>
+            </div>
+            <div className="text-sm text-zinc-400 mb-3">
+              Upload a PDF file to automatically extract content for your memory
+              (max 20MB)
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <Input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileSelect}
+                  disabled={pdfState.isProcessing}
+                  className="bg-zinc-700 border-zinc-600 text-white file:bg-zinc-600 file:text-white file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3"
+                />
+              </div>
+
+              {pdfState.selectedFile && (
+                <Button
+                  type="button"
+                  onClick={handleProcessPDF}
+                  disabled={pdfState.isProcessing}
+                  className="bg-blue-600 hover:bg-blue-700 px-4"
+                >
+                  {pdfState.isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Extract
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {pdfState.selectedFile && (
+              <div className="text-sm text-zinc-400 mt-2">
+                Selected: {pdfState.selectedFile.name} (
+                {Math.round(pdfState.selectedFile.size / 1024)} KB)
+              </div>
+            )}
+          </div>
+
           {/* Content */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">

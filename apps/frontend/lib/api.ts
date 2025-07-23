@@ -182,4 +182,30 @@ export const apiKeys = {
   },
 };
 
+// PDF Processing interface
+export interface PDFProcessingResult {
+  success: boolean;
+  filename: string;
+  size: number;
+  content: string;
+  summary?: string;
+  tags?: string[];
+  appName: string;
+}
+
+export const pdfProcessing = {
+  async processPDF(file: File): Promise<PDFProcessingResult> {
+    const formData = new FormData();
+    formData.append("pdf", file);
+
+    const response = await apiClient.post("/pdf/process", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data;
+  },
+};
+
 export default apiClient;
