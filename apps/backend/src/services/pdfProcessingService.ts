@@ -1,4 +1,5 @@
 import { genAI } from "../config/gemini";
+import { Type } from "@google/genai";
 
 export interface PDFProcessingResult {
   content: string;
@@ -35,13 +36,6 @@ Extract the following:
 2. Brief summary: A concise 1-2 sentence summary of what this document is about
 3. Relevant tags: 3-5 tags that would help categorize and find this information later
 
-Please format your response as JSON with the following structure:
-{
-  "content": "Detailed content extracted from the document...",
-  "summary": "Brief summary of the document...",
-  "tags": ["tag1", "tag2", "tag3"]
-}
-
 Focus on extracting information that would be valuable to remember and reference later. Include key concepts, important details, and actionable insights.`;
 
       // Prepare the content for Gemini
@@ -55,10 +49,35 @@ Focus on extracting information that would be valuable to remember and reference
         },
       ];
 
-      // Generate content using Gemini
+      // Generate content using Gemini with structured output
       const response = await genAI.models.generateContent({
         model: "gemini-2.5-flash",
         contents: contents,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              content: {
+                type: Type.STRING,
+                description: "Detailed content extracted from the document",
+              },
+              summary: {
+                type: Type.STRING,
+                description: "Brief summary of the document",
+              },
+              tags: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.STRING,
+                },
+                description: "3-5 relevant tags for categorization",
+              },
+            },
+            propertyOrdering: ["content", "summary", "tags"],
+            required: ["content", "summary", "tags"],
+          },
+        },
       });
 
       const responseText = response.text;
@@ -69,27 +88,17 @@ Focus on extracting information that would be valuable to remember and reference
 
       console.log("Gemini PDF processing response received");
 
-      // Try to parse JSON response
-      try {
-        const parsed = JSON.parse(responseText);
+      // Parse the structured JSON response
+      const parsed = JSON.parse(responseText);
 
-        return {
-          content: parsed.content || responseText,
-          summary: parsed.summary || undefined,
-          tags: Array.isArray(parsed.tags) ? parsed.tags : undefined,
-          appName: "Gemini",
-        };
-      } catch (parseError) {
-        // If JSON parsing fails, return the raw response as content
-        console.warn("Failed to parse JSON response, using raw content");
+      console.log("Parsed response:", parsed);
 
-        return {
-          content: responseText,
-          summary: undefined,
-          tags: undefined,
-          appName: "Gemini",
-        };
-      }
+      return {
+        content: parsed.content,
+        summary: parsed.summary,
+        tags: parsed.tags,
+        appName: "Gemini",
+      };
     } catch (error) {
       console.error("Error processing PDF with Gemini:", error);
       throw new Error("Failed to process PDF document");
