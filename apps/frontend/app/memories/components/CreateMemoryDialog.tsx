@@ -65,11 +65,11 @@ export function CreateMemoryDialog({
   // Form state - remove userId from form data
   const [formData, setFormData] = useState({
     sessionId: defaultSessionId || `session_${Date.now()}`,
-    content: defaultContent,
-    summary: defaultSummary,
-    authorRole: defaultAuthorRole,
-    importance: defaultImportance,
-    tags: defaultTags,
+    content: defaultContent || "",
+    summary: defaultSummary || "",
+    authorRole: defaultAuthorRole || AuthorRole.USER,
+    importance: defaultImportance || 0.5,
+    tags: defaultTags || [],
     appName: undefined as string | undefined,
   });
 
@@ -90,10 +90,11 @@ export function CreateMemoryDialog({
   });
 
   const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+    const trimmedTag = (newTag || "").trim();
+    if (trimmedTag && !formData.tags.includes(trimmedTag)) {
       setFormData((prev) => ({
         ...prev,
-        tags: [...prev.tags, newTag.trim()],
+        tags: [...prev.tags, trimmedTag],
       }));
       setNewTag("");
     }
@@ -132,7 +133,7 @@ export function CreateMemoryDialog({
 
   // AI assistance handlers
   const handleGenerateSummary = async () => {
-    if (!formData.content.trim()) {
+    if (!(formData.content || "").trim()) {
       toast.error("Please enter some content first");
       return;
     }
@@ -151,7 +152,7 @@ export function CreateMemoryDialog({
   };
 
   const handleGenerateTags = async () => {
-    if (!formData.content.trim()) {
+    if (!(formData.content || "").trim()) {
       toast.error("Please enter some content first");
       return;
     }
@@ -171,7 +172,7 @@ export function CreateMemoryDialog({
   };
 
   const handleGenerateContent = async () => {
-    const currentContent = formData.content.trim();
+    const currentContent = (formData.content || "").trim();
 
     let prompt: string;
 
@@ -246,15 +247,15 @@ Please provide an enhanced version that is more detailed, clear, and informative
       // Auto-populate form fields with extracted content
       setFormData((prev) => ({
         ...prev,
-        content: result.content,
-        summary: result.summary || prev.summary,
-        tags: result.tags
-          ? [...new Set([...prev.tags, ...result.tags])]
+        content: result.memo.content,
+        summary: result.memo.summary || prev.summary,
+        tags: result.memo.tags
+          ? [...new Set([...prev.tags, ...result.memo.tags])]
           : prev.tags,
-        appName: result.appName,
+        appName: result.processingResult.appName,
       }));
 
-      toast.success(`Successfully extracted content from ${result.filename}`);
+      toast.success(`Successfully extracted content from PDF`);
 
       // Clear the selected file
       setPdfState((prev) => ({ ...prev, selectedFile: null }));
@@ -269,7 +270,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
   };
 
   const handleCreateMemory = async () => {
-    if (!formData.content.trim()) {
+    if (!(formData.content || "").trim()) {
       toast.error("Please enter some content");
       return;
     }
@@ -395,7 +396,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
                   disabled={aiLoading.generateContent}
                   className="text-xs text-zinc-400 hover:text-white border-zinc-600"
                   title={
-                    formData.content.trim()
+                    (formData.content || "").trim()
                       ? "Enhance existing content with more context and clarity"
                       : "Generate new content from scratch"
                   }
@@ -405,7 +406,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
                   ) : (
                     <Wand2 className="h-3 w-3" />
                   )}
-                  {formData.content.trim() ? "Enhance" : "Generate"}
+                  {(formData.content || "").trim() ? "Enhance" : "Generate"}
                 </Button>
               </div>
             </div>
@@ -441,7 +442,9 @@ Please provide an enhanced version that is more detailed, clear, and informative
                 variant="outline"
                 size="sm"
                 onClick={handleGenerateSummary}
-                disabled={aiLoading.generateSummary || !formData.content.trim()}
+                disabled={
+                  aiLoading.generateSummary || !(formData.content || "").trim()
+                }
                 className="text-xs text-zinc-400 hover:text-white border-zinc-600"
               >
                 {aiLoading.generateSummary ? (
@@ -526,7 +529,9 @@ Please provide an enhanced version that is more detailed, clear, and informative
                 variant="outline"
                 size="sm"
                 onClick={handleGenerateTags}
-                disabled={aiLoading.generateTags || !formData.content.trim()}
+                disabled={
+                  aiLoading.generateTags || !(formData.content || "").trim()
+                }
                 className="text-xs text-zinc-400 hover:text-white border-zinc-600"
               >
                 {aiLoading.generateTags ? (
@@ -567,7 +572,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
               <Button
                 type="button"
                 onClick={handleAddTag}
-                disabled={!newTag.trim() || aiLoading.generateTags}
+                disabled={!(newTag || "").trim() || aiLoading.generateTags}
                 className="shrink-0"
               >
                 <Plus className="h-4 w-4" />
@@ -586,7 +591,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
             </Button>
             <Button
               onClick={handleCreateMemory}
-              disabled={isLoading || !formData.content.trim()}
+              disabled={isLoading || !(formData.content || "").trim()}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isLoading ? "Creating..." : "Create Memory"}

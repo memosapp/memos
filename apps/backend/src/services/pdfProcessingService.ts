@@ -1,11 +1,14 @@
 import { genAI } from "../config/gemini";
 import { Type } from "@google/genai";
+import { supabaseAdmin } from "../config/supabase";
+import { AttachedFile } from "../types";
 
 export interface PDFProcessingResult {
   content: string;
   summary?: string;
   tags?: string[];
   appName: string;
+  attachedFile: AttachedFile;
 }
 
 export interface UploadedFile {
@@ -19,9 +22,37 @@ export interface UploadedFile {
 
 export class PDFProcessingService {
   /**
+   * Sanitize filename for Supabase storage (remove non-ASCII characters and ensure URL safety)
+   */
+  private static sanitizeFilename(filename: string): string {
+    // Remove file extension
+    const ext = filename.split(".").pop() || "";
+    const nameWithoutExt = filename.replace(`.${ext}`, "");
+
+    // Replace non-ASCII characters and special characters with safe alternatives
+    const sanitized = nameWithoutExt
+      .normalize("NFD") // Decompose accented characters
+      .replace(/[\u0300-\u036f]/g, "") // Remove accent marks
+      .replace(/[^\w\s-]/g, "") // Remove special characters except word chars, spaces, hyphens
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/_+/g, "_") // Replace multiple underscores with single
+      .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+      .toLowerCase();
+
+    // If sanitization resulted in empty string, use a default name
+    const finalName = sanitized || "document";
+
+    return `${finalName}.${ext}`;
+  }
+
+  /**
    * Process a PDF file and extract memory content using Gemini's document understanding
    */
-  static async processPDF(pdfBuffer: Buffer): Promise<PDFProcessingResult> {
+  static async processPDF(
+    pdfBuffer: Buffer,
+    originalFileName: string,
+    userId: string
+  ): Promise<PDFProcessingResult> {
     try {
       console.log(`Processing PDF with Gemini (${pdfBuffer.length} bytes)...`);
 
@@ -94,11 +125,51 @@ Focus on capturing ALL valuable information that would be worth remembering and 
 
       console.log("Parsed response:", parsed);
 
+      // Upload PDF to Supabase storage
+      const sanitizedFileName = this.sanitizeFilename(originalFileName);
+      const fileName = `${userId}/pdfs/${Date.now()}_${sanitizedFileName}`;
+
+      console.log(`Uploading PDF to Supabase storage: ${fileName}`);
+      console.log(
+        `Original filename: "${originalFileName}" -> Sanitized: "${sanitizedFileName}"`
+      );
+
+      const { data: uploadData, error: uploadError } =
+        await supabaseAdmin.storage
+          .from("memo-files")
+          .upload(fileName, pdfBuffer, {
+            contentType: "application/pdf",
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+      if (uploadError) {
+        console.error("Error uploading PDF to storage:", uploadError);
+        throw new Error(`Failed to upload PDF: ${uploadError.message}`);
+      }
+
+      // Get public URL for the uploaded file
+      const {
+        data: { publicUrl },
+      } = supabaseAdmin.storage.from("memo-files").getPublicUrl(fileName);
+
+      console.log(`PDF uploaded successfully: ${publicUrl}`);
+
+      // Create attached file object
+      const attachedFile: AttachedFile = {
+        fileName: originalFileName,
+        fileUrl: publicUrl,
+        fileSize: pdfBuffer.length,
+        fileMimeType: "application/pdf",
+        uploadedAt: new Date(),
+      };
+
       return {
         content: parsed.content,
         summary: parsed.summary,
         tags: parsed.tags,
         appName: "Gemini",
+        attachedFile,
       };
     } catch (error) {
       console.error("Error processing PDF with Gemini:", error);

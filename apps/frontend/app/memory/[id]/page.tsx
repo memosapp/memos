@@ -19,11 +19,13 @@ import {
   Sparkles,
   Tag,
   Edit,
+  Paperclip,
 } from "lucide-react";
 import { Memo } from "@/components/types";
 import { formatDate } from "@/lib/helpers";
 import apiClient from "@/lib/api";
 import { EditMemoryDialog } from "./components/EditMemoryDialog";
+import { AttachedFiles } from "@/components/shared/attached-files";
 import "@/styles/animation.css";
 
 export default function MemoryDetailPage() {
@@ -333,8 +335,26 @@ export default function MemoryDetailPage() {
             </Card>
           )}
 
+          {/* Attached Files Section */}
+          {memo.attachedFiles && memo.attachedFiles.length > 0 && (
+            <Card className="animate-fade-slide-down delay-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Paperclip className="h-5 w-5 text-primary" />
+                  Attached Files
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AttachedFiles
+                  files={memo.attachedFiles}
+                  showUploadDate={true}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Metadata Section */}
-          <Card className="animate-fade-slide-down delay-6">
+          <Card className="animate-fade-slide-down delay-7">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5 text-primary" />

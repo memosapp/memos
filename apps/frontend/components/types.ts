@@ -4,6 +4,14 @@ export enum AuthorRole {
   SYSTEM = "system",
 }
 
+export interface AttachedFile {
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileMimeType: string;
+  uploadedAt: Date | string;
+}
+
 export enum ApiKeyPermission {
   READ = "read",
   WRITE = "write",
@@ -21,6 +29,7 @@ export interface Memo {
   accessCount?: number;
   tags?: string[];
   appName?: string;
+  attachedFiles?: AttachedFile[];
   createdAt: Date | string; // Allow both Date and string for flexibility
   updatedAt: Date | string; // Allow both Date and string for flexibility
   lastAccessedAt?: Date | string; // Allow both Date and string for flexibility
@@ -35,6 +44,7 @@ export interface CreateMemoRequest {
   importance?: number;
   tags?: string[];
   appName?: string;
+  attachedFiles?: AttachedFile[];
 }
 
 export interface UpdateMemoRequest {
@@ -46,6 +56,7 @@ export interface UpdateMemoRequest {
   importance?: number;
   tags?: string[];
   appName?: string;
+  attachedFiles?: AttachedFile[];
 }
 
 export interface SearchRequest {

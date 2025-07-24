@@ -51,6 +51,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/helpers";
+import { AttachedFiles } from "@/components/shared/attached-files";
 
 export function MemoryTable() {
   const { toast } = useToast();
@@ -208,6 +209,11 @@ export function MemoryTable() {
                 >
                   {memo.summary}
                 </div>
+                {memo.attachedFiles && memo.attachedFiles.length > 0 && (
+                  <div className="mt-2">
+                    <AttachedFiles files={memo.attachedFiles} compact={true} />
+                  </div>
+                )}
               </TableCell>
               <TableCell className="py-4">
                 <div className="flex flex-wrap gap-1">

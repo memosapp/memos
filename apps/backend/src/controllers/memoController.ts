@@ -37,6 +37,7 @@ export const createMemo = async (
       importance = 1.0,
       tags,
       appName,
+      attachedFiles,
     }: Omit<CreateMemoRequest, "userId"> = req.body;
 
     // Validate required fields
@@ -72,6 +73,7 @@ export const createMemo = async (
         importance,
         tags: formatTags(tags),
         app_name: appName || null,
+        attached_files: attachedFiles || [],
         embedding: embedding ? formatEmbeddingForPostgres(embedding) : null,
       })
       .select()
@@ -101,6 +103,7 @@ export const createMemo = async (
       accessCount: data.access_count,
       tags: parseTags(data.tags),
       appName: data.app_name,
+      attachedFiles: data.attached_files || [],
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       lastAccessedAt: data.last_accessed_at,
@@ -187,6 +190,7 @@ export const getMemos = async (req: Request, res: Response): Promise<void> => {
       accessCount: row.access_count,
       tags: parseTags(row.tags),
       appName: row.app_name,
+      attachedFiles: row.attached_files || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       lastAccessedAt: row.last_accessed_at,
@@ -256,6 +260,7 @@ export const getMemo = async (req: Request, res: Response): Promise<void> => {
       accessCount: data.access_count + 1, // Return updated count
       tags: parseTags(data.tags),
       appName: data.app_name,
+      attachedFiles: data.attached_files || [],
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       lastAccessedAt: new Date(), // Return updated time
@@ -359,6 +364,7 @@ export const searchMemos = async (
         accessCount: row.access_count,
         tags: parseTags(row.tags),
         appName: row.app_name,
+        attachedFiles: row.attached_files || [],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         lastAccessedAt: row.last_accessed_at,
@@ -452,6 +458,10 @@ export const updateMemo = async (
       updateData.app_name = updates.appName;
     }
 
+    if (updates.attachedFiles !== undefined) {
+      updateData.attached_files = updates.attachedFiles;
+    }
+
     // Check if content or summary changed - if so, regenerate embedding
     const contentChanged =
       updates.content !== undefined && updates.content !== existingMemo.content;
@@ -513,6 +523,7 @@ export const updateMemo = async (
       accessCount: data.access_count,
       tags: parseTags(data.tags),
       appName: data.app_name,
+      attachedFiles: data.attached_files || [],
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       lastAccessedAt: data.last_accessed_at,

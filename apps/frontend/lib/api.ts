@@ -7,6 +7,7 @@ import {
   GeneratedApiKey,
   ApiKeyStats,
   ApiKeyPermissionInfo,
+  AttachedFile,
 } from "@/components/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -185,12 +186,21 @@ export const apiKeys = {
 // PDF Processing interface
 export interface PDFProcessingResult {
   success: boolean;
-  filename: string;
-  size: number;
-  content: string;
-  summary?: string;
-  tags?: string[];
-  appName: string;
+  memo: {
+    id: number;
+    content: string;
+    summary?: string;
+    tags?: string[];
+    attachedFiles: AttachedFile[];
+    createdAt: string;
+  };
+  processingResult: {
+    content: string;
+    summary?: string;
+    tags?: string[];
+    appName: string;
+    attachedFile: AttachedFile;
+  };
 }
 
 export const pdfProcessing = {
