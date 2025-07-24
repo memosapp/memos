@@ -123,16 +123,11 @@ Focus on capturing ALL valuable information that would be worth remembering and 
       // Parse the structured JSON response
       const parsed = JSON.parse(responseText);
 
-      console.log("Parsed response:", parsed);
-
       // Upload PDF to Supabase storage
       const sanitizedFileName = this.sanitizeFilename(originalFileName);
       const fileName = `${userId}/pdfs/${Date.now()}_${sanitizedFileName}`;
 
       console.log(`Uploading PDF to Supabase storage: ${fileName}`);
-      console.log(
-        `Original filename: "${originalFileName}" -> Sanitized: "${sanitizedFileName}"`
-      );
 
       const { data: uploadData, error: uploadError } =
         await supabaseAdmin.storage
