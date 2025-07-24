@@ -32,11 +32,11 @@ export class PDFProcessingService {
       const prompt = `Please analyze this PDF document and extract meaningful information that would be useful to remember. 
 
 Extract the following:
-1. Main content: A comprehensive summary of the key information, concepts, and insights from the document
+1. Main content: Extract the FULL CONTEXT and comprehensive details from the document. Include all important information, key concepts, data points, insights, and actionable details. Preserve the structure and hierarchy of information. Do not summarize - capture the complete context that someone would need to understand and reference this document fully.
 2. Brief summary: A concise 1-2 sentence summary of what this document is about
 3. Relevant tags: 3-5 tags that would help categorize and find this information later
 
-Focus on extracting information that would be valuable to remember and reference later. Include key concepts, important details, and actionable insights.`;
+Focus on capturing ALL valuable information that would be worth remembering and referencing later. The main content should be comprehensive and detailed, preserving the full context of the original document.`;
 
       // Prepare the content for Gemini
       const contents = [
@@ -60,7 +60,8 @@ Focus on extracting information that would be valuable to remember and reference
             properties: {
               content: {
                 type: Type.STRING,
-                description: "Detailed content extracted from the document",
+                description:
+                  "Full context and comprehensive details from the document, including all important information, concepts, and insights",
               },
               summary: {
                 type: Type.STRING,
