@@ -207,7 +207,11 @@ export function MemoryTable() {
                   onClick={() => handleMemoClick(memo.id)}
                   className="font-medium text-white cursor-pointer hover:text-blue-400 transition-colors duration-200 line-clamp-2"
                 >
-                  {memo.summary}
+                  {memo.summary ||
+                    (memo.content
+                      ? memo.content.substring(0, 150) +
+                        (memo.content.length > 150 ? "..." : "")
+                      : "No content")}
                 </div>
                 {memo.attachedFiles && memo.attachedFiles.length > 0 && (
                   <div className="mt-2">

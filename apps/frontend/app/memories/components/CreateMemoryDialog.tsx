@@ -255,10 +255,14 @@ Please provide an enhanced version that is more detailed, clear, and informative
         appName: result.processingResult.appName,
       }));
 
-      toast.success(`Successfully extracted content from PDF`);
+      toast.success(`Successfully created memory from PDF`);
 
       // Clear the selected file
       setPdfState((prev) => ({ ...prev, selectedFile: null }));
+
+      // Close dialog and refresh memories since memo was already created
+      setOpen(false);
+      onSuccess?.(result.memo);
     } catch (error: any) {
       console.error("Error processing PDF:", error);
       toast.error(
@@ -332,8 +336,8 @@ Please provide an enhanced version that is more detailed, clear, and informative
               </Label>
             </div>
             <div className="text-sm text-zinc-400 mb-3">
-              Upload a PDF file to automatically extract content for your memory
-              (max 20MB)
+              Upload a PDF file to automatically create a memory with structured
+              content (max 20MB)
             </div>
 
             <div className="flex items-center gap-3">
@@ -362,7 +366,7 @@ Please provide an enhanced version that is more detailed, clear, and informative
                   ) : (
                     <>
                       <Upload className="h-4 w-4 mr-2" />
-                      Extract
+                      Create Memory
                     </>
                   )}
                 </Button>

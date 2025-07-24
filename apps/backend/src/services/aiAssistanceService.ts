@@ -91,3 +91,42 @@ Return only the generated content without any additional explanation.`;
     throw new Error("Failed to get AI assistance");
   }
 }
+
+/**
+ * Convert plain text content to well-formatted markdown
+ */
+export const convertToMarkdown = async (content: string): Promise<string> => {
+  try {
+    const prompt = `Please convert the following plain text content into well-formatted Markdown. 
+
+IMPORTANT: 
+- Preserve ALL original content - do not summarize or omit anything
+- Add proper Markdown structure with headers (##, ###), lists (-), bold text (**), etc.
+- Make the content more readable and organized
+- Use appropriate Markdown formatting to highlight key information
+- Return ONLY the markdown-formatted content, no explanations
+
+Original content to convert:
+${content}`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ text: prompt }],
+      config: {
+        responseMimeType: "text/plain",
+      },
+    });
+
+    const markdownContent = response.text?.trim();
+
+    if (!markdownContent) {
+      throw new Error("Gemini returned empty response for markdown conversion");
+    }
+
+    return markdownContent;
+  } catch (error) {
+    console.error("Error converting content to markdown:", error);
+    // Fallback: return original content with basic formatting
+    return content.replace(/\n\n/g, "\n\n").trim();
+  }
+};

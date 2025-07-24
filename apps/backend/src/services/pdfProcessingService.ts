@@ -62,12 +62,23 @@ export class PDFProcessingService {
       // Create the prompt for memory extraction
       const prompt = `Please analyze this PDF document and extract meaningful information that would be useful to remember. 
 
-Extract the following:
-1. Main content: Extract the FULL CONTEXT and comprehensive details from the document. Include all important information, key concepts, data points, insights, and actionable details. Preserve the structure and hierarchy of information. Do not summarize - capture the complete context that someone would need to understand and reference this document fully.
-2. Brief summary: A concise 1-2 sentence summary of what this document is about
-3. Relevant tags: 3-5 tags that would help categorize and find this information later
+IMPORTANT: Format your response using proper Markdown syntax for better readability and structure.
 
-Focus on capturing ALL valuable information that would be worth remembering and referencing later. The main content should be comprehensive and detailed, preserving the full context of the original document.`;
+Extract the following:
+1. **Main content**: Extract the FULL CONTEXT and comprehensive details from the document. Format this as proper Markdown with:
+   - Use ## for main sections and ### for subsections
+   - Use **bold** for important terms and concepts
+   - Use bullet points (-) or numbered lists (1.) for structured information
+   - Use > for quotes or important callouts
+   - Include all important information, key concepts, data points, insights, and actionable details
+   - Preserve the logical structure and hierarchy of information
+   - Do not summarize - capture the complete context with proper Markdown formatting
+
+2. **Brief summary**: A concise 1-2 sentence summary of what this document is about (format as plain text, no markdown needed)
+
+3. **Relevant tags**: 3-5 tags that would help categorize and find this information later
+
+Focus on capturing ALL valuable information with clear Markdown structure that would be worth remembering and referencing later. Use headers, lists, bold text, and other Markdown elements to make the content highly readable and well-organized.`;
 
       // Prepare the content for Gemini
       const contents = [
@@ -92,7 +103,7 @@ Focus on capturing ALL valuable information that would be worth remembering and 
               content: {
                 type: Type.STRING,
                 description:
-                  "Full context and comprehensive details from the document, including all important information, concepts, and insights",
+                  "Full context and comprehensive details from the document in Markdown format, including all important information, concepts, and insights with proper headers, lists, and formatting",
               },
               summary: {
                 type: Type.STRING,

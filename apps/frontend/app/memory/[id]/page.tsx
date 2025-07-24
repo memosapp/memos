@@ -26,6 +26,7 @@ import { formatDate } from "@/lib/helpers";
 import apiClient from "@/lib/api";
 import { EditMemoryDialog } from "./components/EditMemoryDialog";
 import { AttachedFiles } from "@/components/shared/attached-files";
+import { ContentDisplay } from "@/components/shared/content-display";
 import "@/styles/animation.css";
 
 export default function MemoryDetailPage() {
@@ -283,11 +284,11 @@ export default function MemoryDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/50 p-4 rounded-lg border">
-                <p className="whitespace-pre-wrap leading-relaxed text-sm">
-                  {memo.content}
-                </p>
-              </div>
+              <ContentDisplay
+                content={memo.content}
+                maxHeight={500}
+                showCopyButton={true}
+              />
             </CardContent>
           </Card>
 
@@ -302,9 +303,12 @@ export default function MemoryDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-                  <p className="whitespace-pre-wrap leading-relaxed text-sm">
-                    {memo.summary}
-                  </p>
+                  <ContentDisplay
+                    content={memo.summary}
+                    maxHeight={200}
+                    showCopyButton={false}
+                    className="bg-transparent"
+                  />
                 </div>
               </CardContent>
             </Card>
