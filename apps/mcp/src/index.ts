@@ -9,14 +9,6 @@ import cors from "cors";
 // Backend API base URL - use environment variable for Docker compatibility
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:3001";
 
-// API Key Authentication Interface
-interface ApiKeyAuthResult {
-  isValid: boolean;
-  userId?: string;
-  permissions?: string[];
-  keyId?: number;
-}
-
 // Extend Request interface to include user information
 declare global {
   namespace Express {
@@ -709,10 +701,26 @@ app.delete("/mcp", async (req: Request, res: Response) => {
   );
 });
 
+// Environment-specific configuration
+const NODE_ENV = process.env.NODE_ENV || "production";
+const isDevelopment = NODE_ENV === "development";
+
+// Port configuration
+const PORT = parseInt(
+  process.env.PORT || (isDevelopment ? "8080" : "3002"),
+  10
+);
+
+// Host configuration
+const HOST = process.env.HOST || (isDevelopment ? "0.0.0.0" : "0.0.0.0");
+
+console.log(`Environment: ${NODE_ENV}`);
+console.log(`Host: ${HOST}`);
+console.log(`Port: ${PORT}`);
+
 // Start the server
-const PORT = process.env.PORT || 3002; // MCP server port
-app.listen(PORT, () => {
-  console.log(`MCP Stateless Streamable HTTP Server listening on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`MCP server running on http://${HOST}:${PORT} (${NODE_ENV})`);
 });
 
 // Handle server shutdown

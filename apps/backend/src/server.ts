@@ -1,10 +1,25 @@
 import app from "./app";
 
-const PORT = process.env.PORT || 3001;
+// Environment-specific configuration
+const NODE_ENV = process.env.NODE_ENV || "production";
+const isDevelopment = NODE_ENV === "development";
+
+// Port configuration
+const PORT = parseInt(
+  process.env.PORT || (isDevelopment ? "8080" : "3001"),
+  10
+);
+
+// Host configuration
+const HOST = process.env.HOST || (isDevelopment ? "0.0.0.0" : "0.0.0.0");
+
+console.log(`Environment: ${NODE_ENV}`);
+console.log(`Host: ${HOST}`);
+console.log(`Port: ${PORT}`);
 
 // Start server
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Backend server running on http://${HOST}:${PORT} (${NODE_ENV})`);
 });
 
 // Graceful shutdown
