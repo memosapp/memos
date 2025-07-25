@@ -70,37 +70,28 @@ NODE_ENV=production pnpm start
 
 ### Development Docker Compose
 
-Create a `docker-compose.dev.yml` file:
+The existing `docker-compose.yml` is configured for development:
 
 ```yaml
-version: "3.8"
 services:
   backend:
-    build:
-      context: ./apps/backend
-      dockerfile: Dockerfile.dev
     ports:
-      - "8080:8080"
+      - "3001:8080" # External:Internal
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      - PORT=8080
-    volumes:
-      - ./apps/backend/src:/app/src
+    # No PORT override - uses environment logic (8080)
 
   mcp:
-    build:
-      context: ./apps/mcp
-      dockerfile: Dockerfile.dev
     ports:
-      - "8081:8080"
+      - "3002:8080" # External:Internal
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      - PORT=8080
-    volumes:
-      - ./apps/mcp/src:/app/src
+    # No PORT override - uses environment logic (8080)
 ```
+
+**Port Mapping**: Services run on port 8080 inside containers (development mode) but are accessible externally on their traditional ports (3001, 3002) for backwards compatibility.
 
 ### Production Docker
 

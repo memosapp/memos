@@ -6,12 +6,12 @@ services:
       dockerfile: Dockerfile.dev
     container_name: memos-backend
     ports:
-      - "3001:3001"
+      - "3001:8080"
     env_file:
       - ./apps/backend/.env
     environment:
       - NODE_ENV=development
-      - PORT=3001
+      - HOST=0.0.0.0
     volumes:
       - ./apps/backend:/app
       - /app/node_modules
@@ -22,7 +22,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1",
         ]
       interval: 15s
       timeout: 5s
@@ -58,10 +58,12 @@ services:
       dockerfile: Dockerfile.dev
     container_name: memos-mcp
     ports:
-      - "3002:3002"
+      - "3002:8080"
     environment:
       - NODE_ENV=development
-      - BACKEND_API_URL=http://backend:3001
+      - HOST=0.0.0.0
+      - PORT= # Clear any PORT variable to use environment logic
+      - BACKEND_API_URL=http://backend:8080
     volumes:
       - ./apps/mcp:/app
       - /app/node_modules

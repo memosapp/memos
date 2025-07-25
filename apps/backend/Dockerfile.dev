@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Expose port
-EXPOSE 3001
+# Expose port (development mode uses 8080)
+EXPOSE 8080
 
 # Run development server with hot reload
 CMD ["npm", "run", "dev"] 

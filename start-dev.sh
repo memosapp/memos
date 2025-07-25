@@ -4,9 +4,11 @@
 echo "🐳 Starting Memos Development Environment..."
 echo "📋 Services will be available at:"
 echo "  - Frontend:    http://localhost:3000"
-echo "  - Backend API: http://localhost:3001"
-echo "  - MCP Server:  http://localhost:3002"
+echo "  - Backend API: http://localhost:3001 (container: 8080)"
+echo "  - MCP Server:  http://localhost:3002 (container: 8080)"
 echo "  - Database:    Supabase (cloud hosted)"
+echo ""
+echo "💡 Note: Services run on port 8080 inside containers (development mode)"
 echo ""
 
 # Check if .env files exist
