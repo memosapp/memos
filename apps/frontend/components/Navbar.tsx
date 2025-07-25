@@ -182,5 +182,5 @@ function UnauthenticatedNavbar() {
 export function Navbar() {
   const { isAuthenticated } = useSelector((state: RootState) => state.profile);
 
-  return isAuthenticated ? <AuthenticatedNavbar /> : <UnauthenticatedNavbar />;
+  return isAuthenticated && <AuthenticatedNavbar />;
 }
