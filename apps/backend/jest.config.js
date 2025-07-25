@@ -13,4 +13,6 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest',
   },
   testTimeout: 10000,
+  forceExit: true,
+  detectOpenHandles: true,
 }; 
